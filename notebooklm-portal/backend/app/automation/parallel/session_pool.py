@@ -37,6 +37,8 @@ class SessionPool:
     async def get_active_sessions(self) -> List[BrowserSession]:
         return [s for s in self.sessions.values() if s.is_active]
 
-    async def rotate_session(self, user_id: str) -> Optional[str]:
-        await self.release_session(user_id)
+    async def rotate_session(self, session_id: str) -> Optional[str]:
+        session = self.sessions.get(session_id)
+        user_id = session.user_id if session else "default"
+        await self.release_session(session_id)
         return await self.acquire_session(user_id)

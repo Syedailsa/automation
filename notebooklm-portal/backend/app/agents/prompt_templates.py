@@ -36,12 +36,12 @@ Available actions:
 - list_notebooks: List all notebooks
 
 Return JSON with this structure:
-{
+{{
   "reasoning": "brief explanation of the plan",
   "actions": [
-    {"action": "action_name", "params": {"key": "value"}, "description": "what this step does"}
+    {{"action": "action_name", "params": {{"key": "value"}}, "description": "what this step does"}}
   ]
-}"""
+}}"""
 
     ROMAN_URDU_TRANSLATOR = """Translate the following Roman Urdu text to English.
 

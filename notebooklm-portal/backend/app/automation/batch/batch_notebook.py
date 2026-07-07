@@ -1,16 +1,28 @@
+import logging
 from typing import List, Dict, Any
 from ..browser_manager import BrowserManager
+from ..notebooks.notebook_manager import NotebookManager
+
+logger = logging.getLogger(__name__)
 
 
 class BatchNotebookCreation:
+    """Batch create multiple notebooks using real NotebookManager."""
+    
     def __init__(self, browser_manager: BrowserManager):
         self.browser = browser_manager
+        self.manager = NotebookManager(browser_manager)
 
     async def create_multiple_notebooks(self, notebooks: List[Dict[str, Any]]) -> Dict[str, Any]:
         results = []
         for notebook in notebooks:
-            result = await self.browser.create_notebook(notebook.get("title", "Untitled"))
-            results.append({"title": notebook.get("title"), "result": result})
+            title = notebook.get("title", "Untitled")
+            try:
+                result = await self.manager.create_notebook(title)
+            except Exception as e:
+                logger.error(f"Batch notebook creation error: {e}")
+                result = {"status": "error", "error": str(e)}
+            results.append({"title": title, "result": result})
         
         return {
             "total": len(notebooks),

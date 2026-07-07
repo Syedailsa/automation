@@ -145,9 +145,11 @@ class TestNotebookLMAgent:
     @pytest.mark.asyncio
     async def test_refine_input_english(self):
         agent = NotebookLMAgent()
-        with patch.object(agent.llm, "generate", new=AsyncMock(return_value="refined input")):
+        mock_generate = AsyncMock(return_value="should not be called")
+        with patch.object(agent.llm, "generate", new=mock_generate):
             result = await agent.refine_input("Hello world", "en")
-            assert result == "refined input"
+            assert result == "Hello world"
+            mock_generate.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_refine_input_roman_urdu(self):

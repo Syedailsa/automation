@@ -2,7 +2,7 @@ import re
 from typing import Optional
 
 ROMAN_URDU_INDICATORS = {
-    "hai", "hain", "ho", "tha", "the", "thi", "thin",
+    "hai", "hain", "ho", "tha", "thi", "thin",
     "ko", "ka", "ke", "ki", "kay",
     "mein", "mai", "se", "par", "pe",
     "aur", "ya", "lekin", "magar",
