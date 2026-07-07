@@ -33,3 +33,6 @@ htmlcov/
 
 # Logs
 *.log
+
+# Project Config (contains secrets)
+.project_config.json

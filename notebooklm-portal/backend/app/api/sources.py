@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,9 +19,9 @@ async def add_url_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
     return await source_service.create_source(
-        db, notebook_id, title=body.title, source_type="url", url=body.url
+        db, uuid.UUID(notebook_id), title=body.title, source_type="url", url=body.url
     )
 
 
@@ -30,9 +32,9 @@ async def add_text_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
     return await source_service.create_source(
-        db, notebook_id, title=body.title, source_type="text", content=body.content
+        db, uuid.UUID(notebook_id), title=body.title, source_type="text", content=body.content
     )
 
 
@@ -43,8 +45,8 @@ async def delete_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
-    source = await source_service.get_source_by_id(db, source_id, notebook_id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
+    source = await source_service.get_source_by_id(db, uuid.UUID(source_id), uuid.UUID(notebook_id))
     await source_service.delete_source(db, source)
     return {"message": "Source deleted successfully"}
 
@@ -56,5 +58,5 @@ async def get_source_content(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
-    return await source_service.get_source_by_id(db, source_id, notebook_id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
+    return await source_service.get_source_by_id(db, uuid.UUID(source_id), uuid.UUID(notebook_id))

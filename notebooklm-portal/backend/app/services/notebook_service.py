@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
@@ -11,9 +11,9 @@ async def list_user_notebooks(
     db: AsyncSession, user_id: uuid.UUID, skip: int = 0, limit: int = 50
 ) -> tuple[list[Notebook], int]:
     count_result = await db.execute(
-        select(Notebook).where(Notebook.user_id == user_id)
+        select(func.count()).select_from(Notebook).where(Notebook.user_id == user_id)
     )
-    total = len(count_result.scalars().all())
+    total = count_result.scalar()
 
     result = await db.execute(
         select(Notebook)

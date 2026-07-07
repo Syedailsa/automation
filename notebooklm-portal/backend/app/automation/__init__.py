@@ -1,7 +1,7 @@
 """Playwright automation module for NotebookLM."""
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import json
 import random
@@ -183,10 +183,10 @@ class RateLimiter:
         now = datetime.now()
         
         # Remove old requests
-        self.requests = [r for r in self.requests if r > now - asyncio.timedelta(seconds=self.time_window)]
+        self.requests = [r for r in self.requests if r > now - timedelta(seconds=self.time_window)]
         
         if len(self.requests) >= self.max_requests:
-            wait_time = (self.requests[0] + asyncio.timedelta(seconds=self.time_window) - now).total_seconds()
+            wait_time = (self.requests[0] + timedelta(seconds=self.time_window) - now).total_seconds()
             print(f"Rate limit reached. Waiting {wait_time:.1f} seconds...")
             await asyncio.sleep(wait_time)
         

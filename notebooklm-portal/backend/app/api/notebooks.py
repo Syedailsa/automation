@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,7 +49,7 @@ async def get_notebook(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
+    return await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
 
 
 @router.put("/{notebook_id}", response_model=NotebookResponse)
@@ -58,7 +60,7 @@ async def update_notebook(
     db: AsyncSession = Depends(get_db),
 ):
     notebook = await notebook_service.get_notebook_by_id(
-        db, notebook_id, current_user.id
+        db, uuid.UUID(notebook_id), current_user.id
     )
     return await notebook_service.update_notebook(
         db, notebook, title=body.title, description=body.description, status=body.status
@@ -72,7 +74,7 @@ async def delete_notebook(
     db: AsyncSession = Depends(get_db),
 ):
     notebook = await notebook_service.get_notebook_by_id(
-        db, notebook_id, current_user.id
+        db, uuid.UUID(notebook_id), current_user.id
     )
     await notebook_service.delete_notebook(db, notebook)
     return {"message": "Notebook deleted successfully"}
@@ -86,9 +88,9 @@ async def list_notebook_sources(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
     sources, total = await source_service.list_notebook_sources(
-        db, notebook_id, skip=skip, limit=limit
+        db, uuid.UUID(notebook_id), skip=skip, limit=limit
     )
     return SourceListResponse(sources=sources, total=total)
 
@@ -101,8 +103,8 @@ async def list_notebook_outputs(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await notebook_service.get_notebook_by_id(db, notebook_id, current_user.id)
+    await notebook_service.get_notebook_by_id(db, uuid.UUID(notebook_id), current_user.id)
     outputs, total = await output_service.list_notebook_outputs(
-        db, notebook_id, skip=skip, limit=limit
+        db, uuid.UUID(notebook_id), skip=skip, limit=limit
     )
     return OutputListResponse(outputs=outputs, total=total)

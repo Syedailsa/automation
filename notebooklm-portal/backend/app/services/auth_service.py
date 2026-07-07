@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime
 from urllib.parse import urlencode
 
 import httpx
@@ -65,7 +66,7 @@ async def get_or_create_user(db: AsyncSession, user_info: dict, tokens: dict) ->
         user.refresh_token = tokens.get("refresh_token")
         user.avatar_url = user_info.get("picture")
         user.name = user_info.get("name")
-        user.last_login = user.created_at
+        user.last_login = datetime.utcnow()
     else:
         user = User(
             email=user_info["email"],

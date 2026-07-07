@@ -1,11 +1,11 @@
 import asyncio
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import json
 from typing import Optional
 
-from playwright.async_api import Page
+from playwright.async_api import Page, async_playwright
 
 from .browser_manager import HumanDelays, ScreenshotManager
 from .selectors import settings
