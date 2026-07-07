@@ -4,6 +4,8 @@ import json
 from typing import Any
 from functools import wraps
 
+"""In-memory caching with TTL support."""
+
 
 class MemoryCache:
     """Simple in-memory cache with TTL support."""

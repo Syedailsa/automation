@@ -3,6 +3,8 @@ from pathlib import Path
 
 from app.config import settings
 
+"""File storage operations."""
+
 
 def get_user_storage_path(user_id: str) -> Path:
     base = Path(settings.NOTEBOOKLM_STORAGE_BASE)

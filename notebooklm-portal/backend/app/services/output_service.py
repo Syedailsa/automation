@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException
 from app.models.output import Output
 
+"""Output CRUD operations."""
+
 
 async def list_notebook_outputs(
     db: AsyncSession, notebook_id: uuid.UUID, skip: int = 0, limit: int = 50

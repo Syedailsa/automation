@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserProfileResponse(BaseModel):
@@ -13,8 +13,7 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     last_login: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserProfileUpdate(BaseModel):
@@ -26,8 +25,7 @@ class UserSettingsResponse(BaseModel):
     preferred_llm: str = "openai"
     notebooklm_connected: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserSettingsUpdate(BaseModel):

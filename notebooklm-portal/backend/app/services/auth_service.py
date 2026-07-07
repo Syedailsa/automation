@@ -10,6 +10,8 @@ from app.config import settings
 from app.core.security import create_access_token
 from app.models.user import User
 
+"""Google OAuth authentication service."""
+
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"

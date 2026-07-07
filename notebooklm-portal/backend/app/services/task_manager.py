@@ -6,6 +6,8 @@ from enum import Enum
 from typing import Any, Callable, Coroutine
 from dataclasses import dataclass, field
 
+"""Background task management with retry logic."""
+
 
 class TaskStatus(str, Enum):
     PENDING = "pending"

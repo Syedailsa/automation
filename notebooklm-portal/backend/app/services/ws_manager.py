@@ -2,6 +2,8 @@ import json
 from typing import Any
 from fastapi import WebSocket
 
+"""WebSocket connection manager for real-time updates."""
+
 
 class ConnectionManager:
     """Manages WebSocket connections for real-time updates."""

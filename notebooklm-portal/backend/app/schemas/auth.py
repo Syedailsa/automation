@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class PreferredLLM(str, Enum):
@@ -32,5 +32,4 @@ class AuthMeResponse(BaseModel):
     notebooklm_connected: bool = False
     preferred_llm: str = "openai"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

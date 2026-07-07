@@ -7,6 +7,8 @@ from app.core.exceptions import NotFoundException
 from app.models.notebook import Notebook
 from app.services.cache_service import cache
 
+"""Notebook CRUD operations."""
+
 
 async def list_user_notebooks(
     db: AsyncSession, user_id: uuid.UUID, skip: int = 0, limit: int = 50

@@ -1,6 +1,12 @@
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+import logging
 import uuid
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +20,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.api import auth, users, notebooks, sources, outputs, agent, ws, tasks
 from app.api.v1.router import v1_router
 from app.middleware.deprecation import DeprecationHeaderMiddleware
+from app.middleware.request_logger import RequestLoggerMiddleware
 
 
 @asynccontextmanager
@@ -99,6 +106,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 # --- CORS ---
 
+
+app.add_middleware(RequestLoggerMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

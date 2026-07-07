@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AgentRefineRequest(BaseModel):
@@ -47,5 +47,4 @@ class ExecutionLogResponse(BaseModel):
     completed_at: datetime | None = None
     events: List[ExecutionEventSchema] | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

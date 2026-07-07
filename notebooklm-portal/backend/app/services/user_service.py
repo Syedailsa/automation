@@ -5,6 +5,8 @@ from app.core.exceptions import NotFoundException
 from app.models.user import User
 from app.services.cache_service import cache
 
+"""User management operations."""
+
 
 async def get_user_by_id(db: AsyncSession, user_id: str) -> User:
     cache_key = f"user:{user_id}"
