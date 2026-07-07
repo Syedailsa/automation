@@ -10,7 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from app.config import settings
 from app.core.exceptions import AppException
 from app.database import init_db
-from app.api import auth, users, notebooks, sources, outputs, agent, ws
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.api import auth, users, notebooks, sources, outputs, agent, ws, tasks
+from app.api.v1.router import v1_router
+from app.middleware.deprecation import DeprecationHeaderMiddleware
 
 
 @asynccontextmanager
@@ -105,6 +108,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
+
+app.add_middleware(DeprecationHeaderMiddleware)
+
 
 # --- Routers ---
 
@@ -116,6 +123,8 @@ app.include_router(sources.router)
 app.include_router(outputs.router)
 app.include_router(agent.router)
 app.include_router(ws.router)
+app.include_router(tasks.router)
+app.include_router(v1_router)
 
 
 # --- Health Check ---

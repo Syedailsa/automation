@@ -36,3 +36,16 @@ def delete_file(file_path: str) -> bool:
         return True
     except FileNotFoundError:
         return False
+
+
+def get_user_notebook_uploads_path(user_id: str, notebook_id: str) -> Path:
+    path = get_user_storage_path(user_id) / "notebooklm" / notebook_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def save_upload_file(user_id: str, notebook_id: str, filename: str, content: bytes) -> str:
+    notebook_path = get_user_notebook_uploads_path(user_id, notebook_id)
+    file_path = notebook_path / filename
+    file_path.write_bytes(content)
+    return str(file_path)

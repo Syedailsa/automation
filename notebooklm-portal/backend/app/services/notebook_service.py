@@ -5,11 +5,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
 from app.models.notebook import Notebook
+from app.services.cache_service import cache
 
 
 async def list_user_notebooks(
     db: AsyncSession, user_id: uuid.UUID, skip: int = 0, limit: int = 50
 ) -> tuple[list[Notebook], int]:
+    cache_key = f"notebooks:list:{user_id}:{skip}:{limit}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     count_result = await db.execute(
         select(func.count()).select_from(Notebook).where(Notebook.user_id == user_id)
     )
@@ -22,7 +28,10 @@ async def list_user_notebooks(
         .offset(skip)
         .limit(limit)
     )
-    return list(result.scalars().all()), total
+    notebooks = list(result.scalars().all())
+    result_tuple = (notebooks, total)
+    cache.set(cache_key, result_tuple, ttl=120)
+    return result_tuple
 
 
 async def create_notebook(

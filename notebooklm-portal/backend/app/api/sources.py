@@ -1,6 +1,7 @@
+import io
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File as FastAPIFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
@@ -8,7 +9,8 @@ from app.core.exceptions import BadRequestException
 from app.database import get_db
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse
-from app.services import notebook_service, source_service
+from app.services import notebook_service, source_service, storage_service
+from app.utils.file_handler import validate_file, safe_filename, cleanup_file
 
 router = APIRouter(prefix="/api/notebooks", tags=["sources"])
 
@@ -79,3 +81,45 @@ async def get_source_content(
     src_id = _parse_uuid(source_id, "source_id")
     await notebook_service.get_notebook_by_id(db, nb_id, current_user.id)
     return await source_service.get_source_by_id(db, src_id, nb_id)
+
+
+@router.post("/{notebook_id}/sources/file", response_model=SourceResponse, status_code=201)
+async def add_file_source(
+    notebook_id: str,
+    title: str,
+    file: UploadFile = FastAPIFile(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    nb_id = _parse_uuid(notebook_id, "notebook_id")
+    await notebook_service.get_notebook_by_id(db, nb_id, current_user.id)
+
+    content = await file.read()
+    is_valid, message = validate_file(
+        file.filename or "unknown",
+        file.content_type,
+        len(content),
+    )
+    if not is_valid:
+        raise BadRequestException(message)
+
+    output_name = safe_filename(file.filename or "upload")
+    file_path = None
+    try:
+        file_path = storage_service.save_upload_file(
+            str(current_user.id), str(nb_id), output_name, content
+        )
+    except Exception:
+        if file_path:
+            cleanup_file(file_path)
+        raise BadRequestException("Failed to save uploaded file")
+
+    source = await source_service.create_source(
+        db,
+        nb_id,
+        title=title,
+        source_type="file",
+        file_path=file_path,
+    )
+    await notebook_service.increment_source_count(db, nb_id)
+    return source

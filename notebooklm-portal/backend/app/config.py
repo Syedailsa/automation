@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # Storage
     NOTEBOOKLM_STORAGE_BASE: str = "storage/"
 
+    # Upload limits
+    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50MB
+    ALLOWED_FILE_TYPES: str = "pdf,txt,md,docx,csv,json"
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:80"
 

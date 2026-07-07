@@ -33,3 +33,8 @@ def hash_token(token: str) -> str:
 
 def verify_token_hash(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
+
+def verify_ws_token(token: str) -> dict | None:
+    """Verify token for WebSocket connections. Returns payload or None."""
+    return verify_token(token)

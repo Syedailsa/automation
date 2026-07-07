@@ -34,3 +34,15 @@ async def test_get_source_content_unauthorized(client: AsyncClient):
         "/api/notebooks/00000000-0000-0000-0000-000000000000/sources/00000000-0000-0000-0000-000000000000/content"
     )
     assert response.status_code in [401, 403, 422]
+
+
+@pytest.mark.asyncio
+async def test_add_file_source_unauthorized(client: AsyncClient):
+    import io
+    files = {"file": ("test.txt", io.BytesIO(b"test content"), "text/plain")}
+    response = await client.post(
+        "/api/notebooks/00000000-0000-0000-0000-000000000000/sources/file",
+        files=files,
+        data={"title": "Test File"},
+    )
+    assert response.status_code in [401, 403, 422]

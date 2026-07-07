@@ -3,13 +3,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
 from app.models.user import User
+from app.services.cache_service import cache
 
 
 async def get_user_by_id(db: AsyncSession, user_id: str) -> User:
+    cache_key = f"user:{user_id}"
+    cached_user = cache.get(cache_key)
+    if cached_user is not None:
+        return cached_user
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise NotFoundException("User not found")
+    cache.set(cache_key, user, ttl=60)
     return user
 
 
