@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 from app.agents import NotebookLMAgent, execution_hub, ExecutionEvent
 from app.agents.llm_provider import LLMProvider
 from app.core.deps import get_current_user
-from app.database import get_db
+from app.database import get_db, get_db_optional
 from app.models.user import User
 from app.schemas.agent import (
     AgentExecuteRequest,
@@ -193,20 +193,23 @@ async def get_history(
 async def chat(
     body: ChatRequest,
     authorization: str = Header(None),
-    db: AsyncSession = Depends(get_db),
+    db: Optional[AsyncSession] = Depends(get_db_optional),
 ):
     """Chat endpoint — always uses raw LLM. NotebookLM integration is opt-in via /execute."""
-    # Get user if token provided (for future use)
+    # Get user if token provided
     current_user = None
-    if authorization and authorization.startswith("Bearer "):
+    if db is not None and authorization and authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "")
         from app.core.security import verify_token
         payload = verify_token(token)
         if payload:
             user_id = payload.get("sub")
             if user_id:
-                result = await db.execute(select(User).where(User.id == user_id))
-                current_user = result.scalar_one_or_none()
+                try:
+                    result = await db.execute(select(User).where(User.id == user_id))
+                    current_user = result.scalar_one_or_none()
+                except Exception:
+                    pass
 
     # Build the user message from the messages array
     user_message = ""

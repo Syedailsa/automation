@@ -56,7 +56,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await cache.close()
 
     # Dispose database engine pool
-    await engine.dispose()
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
 
     logging.getLogger(__name__).info("Shutdown complete")
 
@@ -180,14 +183,15 @@ async def health_check() -> dict:
     """Health check endpoint with DB and Redis ping."""
     uptime = time.time() - app_start_time if app_start_time else 0
 
-    # Check database
+    # Check database (resilient to connection failures)
     db_ok = True
     try:
         from sqlalchemy import text
+        from sqlalchemy.exc import OperationalError
 
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception:
+    except (OperationalError, Exception):
         db_ok = False
 
     # Check cache
