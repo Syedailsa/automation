@@ -3,8 +3,9 @@ from typing import Optional
 
 from playwright.async_api import Page
 
-from ..browser_manager import HumanDelays, ScreenshotManager
-from ..selectors import settings
+from ..resilience import HumanDelays
+from ..utils import ScreenshotManager
+from ..config import settings
 
 
 class LoginManager:

@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-from ..selectors import settings
+from ..config import settings
 
 
 class HumanDelays:

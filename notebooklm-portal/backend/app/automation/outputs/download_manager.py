@@ -2,8 +2,8 @@ import asyncio
 from pathlib import Path
 from playwright.async_api import Page
 
-from ..browser_manager import HumanDelays
-from ..selectors import settings
+from ..resilience import HumanDelays
+from ..config import settings
 
 
 class DownloadManager:

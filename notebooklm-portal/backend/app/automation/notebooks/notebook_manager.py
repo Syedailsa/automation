@@ -2,7 +2,7 @@ import asyncio
 import logging
 from playwright.async_api import Page
 
-from ..browser_manager import HumanDelays
+from ..resilience import HumanDelays
 
 logger = logging.getLogger(__name__)
 

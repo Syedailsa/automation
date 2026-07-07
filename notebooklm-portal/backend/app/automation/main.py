@@ -5,11 +5,10 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from .browser_manager import BrowserConfig, Selectors, settings
-from .auth_handler import LoginManager, SessionManager, SessionDetector
-from .notebook_ops import NotebookManager, SourceManager, ProcessingMonitor
-from .generation_ops import AudioGenerator, VideoGenerator, QuizGenerator, FlashcardGenerator, SlideGenerator
-from .download_ops import DownloadManager
+from .config import BrowserConfig, settings
+from .auth import LoginManager, SessionManager, SessionDetector
+from .notebooks import NotebookManager, SourceManager, ProcessingMonitor
+from .outputs import AudioGenerator, VideoGenerator, QuizGenerator, FlashcardGenerator, SlideGenerator, DownloadManager
 from .utils.logger import get_logger
 from .utils.selector_registry import selector_registry
 
