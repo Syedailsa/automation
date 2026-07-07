@@ -7,8 +7,10 @@ import {
   Wand2, Headphones, Presentation, Clapperboard, Network, Layers,
   ListChecks, PieChart, Table, Pin, ArrowLeft, ChevronRight, ChevronLeft,
   Play, Pause, RotateCw, Loader2, AlertTriangle,
-  Mail, Lock, Eye, EyeOff, User, ArrowRight
+  Mail, Lock, Eye, EyeOff, User, ArrowRight,
+  Download, Printer, FileSpreadsheet, CheckCircle2, Info, Gauge
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 /* ============================================================
    NovaAI — Intelligent AI Workspace Portal
@@ -167,6 +169,98 @@ function cleanJSON(raw) {
 const stepLabel = (p) => p < 25 ? 'Reading your sources' : p < 55 ? 'Analyzing the content' : p < 85 ? 'Generating your asset' : 'Formatting the result';
 const toolIcon = (kind) => kind === 'image' ? ImageIcon : kind === 'pdf' ? FileText : kind === 'text' ? FileText : File;
 
+/* ---------- Toast notifications (global) ---------- */
+const toastListeners = new Set();
+function notify(message, type = 'info') { toastListeners.forEach(l => l(message, type)); }
+function ToastHost() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    const l = (message, type) => {
+      const id = uid();
+      setItems(v => [...v, { id, message, type }]);
+      setTimeout(() => setItems(v => v.filter(x => x.id !== id)), 3400);
+    };
+    toastListeners.add(l);
+    return () => { toastListeners.delete(l); };
+  }, []);
+  const ICON = { success: CheckCircle2, error: AlertTriangle, info: Info };
+  return (
+    <div className="toast-host">
+      {items.map(t => {
+        const Ic = ICON[t.type] || Info;
+        return (
+          <div key={t.id} className={`toast ${t.type}`}>
+            <Ic size={17} className="toast-ic" />
+            <span className="toast-msg">{t.message}</span>
+            <button onClick={() => setItems(v => v.filter(x => x.id !== t.id))}><X size={14} /></button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- Export helpers ---------- */
+function downloadBlob(filename, content, type) {
+  try {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+    notify(`Downloaded ${filename}`, 'success');
+  } catch (e) { notify('Download is blocked in this preview — it works in the deployed app.', 'error'); }
+}
+function toCSV(rows) {
+  return rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+}
+function exportXLSX(filename, aoa, sheet = 'Sheet1') {
+  try {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheet);
+    XLSX.writeFile(wb, filename);
+    notify(`Exported ${filename}`, 'success');
+  } catch (e) { notify('Excel export is blocked in this preview — it works in the deployed app.', 'error'); }
+}
+function copyText(text, label = 'Copied to clipboard') {
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => notify(label, 'success'), () => notify('Copy failed', 'error'));
+  else notify('Clipboard unavailable', 'error');
+}
+function printHTML(title, bodyHtml) {
+  const w = window.open('', '_blank', 'width=820,height=640');
+  if (!w) { notify('Allow pop-ups to print or save as PDF.', 'error'); return; }
+  w.document.write(`<!doctype html><html><head><title>${title}</title><style>
+    body{font-family:-apple-system,system-ui,sans-serif;padding:44px;line-height:1.6;color:#0f172a;max-width:760px;margin:auto}
+    h1,h2,h3,h4{margin:18px 0 8px} pre{background:#f1f5f9;padding:12px 14px;border-radius:8px;overflow:auto}
+    code{background:#f1f5f9;padding:1px 6px;border-radius:4px}
+    table{border-collapse:collapse;width:100%} th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left}
+    ul,ol{padding-left:22px}</style></head><body>${bodyHtml}</body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+  notify('Opened a print view — choose "Save as PDF".', 'info');
+}
+
+/* ---------- Reusable HTML5 media player (for real MP3/MP4 from the backend) ---------- */
+function MediaPlayer({ src, kind = 'audio', name = 'media' }) {
+  const ref = useRef(null);
+  const [rate, setRate] = useState(1);
+  const setSpeed = (r) => { setRate(r); if (ref.current) ref.current.playbackRate = r; };
+  return (
+    <div className="mediaplayer">
+      {kind === 'video'
+        ? <video ref={ref} src={src} controls className="mp-video" />
+        : <audio ref={ref} src={src} controls className="mp-audio" />}
+      <div className="mp-bar">
+        <span className="mp-speed"><Gauge size={13} />
+          {[0.75, 1, 1.25, 1.5].map(r => (
+            <button key={r} className={rate === r ? 'on' : ''} onClick={() => setSpeed(r)}>{r}×</button>
+          ))}
+        </span>
+        <a className="mp-dl" href={src} download={name}><Download size={14} /> Download</a>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Work Studio tool output (renders in main workspace) ---------- */
 function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
   const Icon = tool.icon;
@@ -178,6 +272,7 @@ function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
   const [playing, setPlaying] = useState(false);
   const [curSeg, setCurSeg] = useState(-1);
   const [copied, setCopied] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const ttsOK = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   useEffect(() => {
@@ -196,14 +291,65 @@ function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
       setCurSeg(i);
       const u = new SpeechSynthesisUtterance(segs[i].text);
       if (voices.length) u.voice = voices[(segs[i].speaker === 'Host B' ? 1 : 0) % voices.length];
-      u.rate = 1.03;
+      u.rate = speed;
       u.onend = () => { i++; next(); };
       window.speechSynthesis.speak(u);
     };
     setPlaying(true); next();
   };
   const stopAudio = () => { try { window.speechSynthesis.cancel(); } catch (e) {} setPlaying(false); setCurSeg(-1); };
-  const copyReport = () => { navigator.clipboard?.writeText(data?.markdown || ''); setCopied(true); setTimeout(() => setCopied(false), 1400); };
+  const copyReport = () => { copyText(data?.markdown || '', 'Report copied'); setCopied(true); setTimeout(() => setCopied(false), 1400); };
+  const downloadTranscript = () => {
+    const t = (data?.segments || []).map(s => `${s.speaker}: ${s.text}`).join('\n\n');
+    downloadBlob('audio-overview-transcript.txt', t, 'text/plain');
+  };
+
+  // Export toolbar per tool (CSV / Excel / PDF-print / copy).
+  const renderExport = () => {
+    const k = tool.kind;
+    if (k === 'report') {
+      const md = data?.markdown || '';
+      return (
+        <div className="export-bar">
+          <button className="mini-btn" onClick={copyReport}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>
+          <button className="mini-btn" onClick={() => downloadBlob('nova-report.md', md, 'text/markdown')}><Download size={14} /> .md</button>
+          <button className="mini-btn" onClick={() => printHTML(data?.title || 'Report', renderMarkdown(md))}><Printer size={14} /> Print / PDF</button>
+        </div>
+      );
+    }
+    if (k === 'flashcards') {
+      const cards = data?.cards || [];
+      const aoa = [['Question', 'Answer'], ...cards.map(c => [c.front, c.back])];
+      return (
+        <div className="export-bar">
+          <button className="mini-btn" onClick={() => copyText(cards.map(c => `${c.front}\t${c.back}`).join('\n'), 'Flashcards copied')}><Copy size={14} /> Copy</button>
+          <button className="mini-btn" onClick={() => downloadBlob('flashcards.csv', toCSV(aoa), 'text/csv')}><Download size={14} /> CSV</button>
+          <button className="mini-btn" onClick={() => exportXLSX('flashcards.xlsx', aoa, 'Flashcards')}><FileSpreadsheet size={14} /> Excel</button>
+        </div>
+      );
+    }
+    if (k === 'table') {
+      const aoa = [data?.columns || [], ...(data?.rows || [])];
+      return (
+        <div className="export-bar">
+          <button className="mini-btn" onClick={() => downloadBlob('data-table.csv', toCSV(aoa), 'text/csv')}><Download size={14} /> CSV</button>
+          <button className="mini-btn" onClick={() => exportXLSX('data-table.xlsx', aoa, 'Data')}><FileSpreadsheet size={14} /> Excel</button>
+        </div>
+      );
+    }
+    if (k === 'quiz') {
+      const qs = data?.questions || [];
+      const text = qs.map((q, i) => `${i + 1}. ${q.q}\n${(q.options || []).map((o, oi) => `  ${String.fromCharCode(65 + oi)}. ${o}`).join('\n')}\nAnswer: ${String.fromCharCode(65 + (q.answer || 0))}`).join('\n\n');
+      const html = `<h1>${data?.title || 'Quiz'}</h1>` + qs.map((q, i) => `<h3>${i + 1}. ${q.q}</h3><ul>${(q.options || []).map(o => `<li>${o}</li>`).join('')}</ul>`).join('');
+      return (
+        <div className="export-bar">
+          <button className="mini-btn" onClick={() => copyText(text, 'Quiz copied')}><Copy size={14} /> Copy</button>
+          <button className="mini-btn" onClick={() => printHTML('Quiz', html)}><Printer size={14} /> Print / PDF</button>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const renderResult = () => {
     if (!data) return null;
@@ -212,12 +358,20 @@ function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
         const segs = data.segments || [];
         return (
           <div className="tool-result">
-            <div className="audio-head">
-              <div><div className="res-h">{data.title}</div><div className="ar-meta">{segs.length} segments · AI hosts</div></div>
+            <div className="res-h">{data.title}</div>
+            {data.audioUrl && <MediaPlayer src={data.audioUrl} kind="audio" name="audio-overview.mp3" />}
+            <div className="audio-player">
               {ttsOK
                 ? <button className="play-btn" onClick={playing ? stopAudio : playAudio}>{playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Stop' : 'Play'}</button>
-                : <span className="ar-meta">Read the script below</span>}
+                : <span className="ar-meta">Read the transcript below</span>}
+              <span className="mp-speed"><Gauge size={13} />
+                {[0.75, 1, 1.25, 1.5].map(r => (
+                  <button key={r} className={speed === r ? 'on' : ''} onClick={() => setSpeed(r)}>{r}×</button>
+                ))}
+              </span>
+              <button className="mini-btn" onClick={downloadTranscript}><Download size={14} /> Transcript</button>
             </div>
+            <div className="ar-meta ar-count">{segs.length} segments · AI hosts</div>
             <div className="audio-script">
               {segs.map((s, i) => (
                 <div key={i} className={`seg ${curSeg === i ? 'on' : ''}`}>
@@ -288,9 +442,6 @@ function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
       case 'report':
         return (
           <div className="tool-result">
-            <div className="res-toolbar">
-              <button className="mini-btn" onClick={copyReport}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>
-            </div>
             <div className="report md" dangerouslySetInnerHTML={{ __html: renderMarkdown(data.markdown || '') }} />
           </div>
         );
@@ -397,7 +548,12 @@ function ToolView({ tool, status, progress, data, error, onBack, onRetry }) {
             <button className="btn-primary" onClick={onRetry}><RotateCw size={15} /> Retry</button>
           </div>
         )}
-        {status === 'done' && renderResult()}
+        {status === 'done' && (
+          <div className="tool-done">
+            {renderExport()}
+            {renderResult()}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -792,7 +948,8 @@ export default function App() {
         else if (isImg) addSourceToChat({ id: uid(), name: f.name, kind: 'image', mediaType: f.type, data: await toBase64(f) });
         else if (isPdf) addSourceToChat({ id: uid(), name: f.name, kind: 'pdf', mediaType: 'application/pdf', data: await toBase64(f) });
         else addSourceToChat({ id: uid(), name: f.name, kind: 'other' });
-      } catch { /* skip */ }
+        notify(`Added source: ${f.name}`, 'success');
+      } catch { notify(`Couldn't add ${f.name}`, 'error'); }
     }
   }
 
@@ -800,6 +957,7 @@ export default function App() {
     if (!pasteText.trim()) return;
     addSourceToChat({ id: uid(), name: `Pasted text (${pasteText.trim().slice(0, 22)}…)`, kind: 'text', textContent: pasteText.trim().slice(0, 30000) });
     setPasteText(''); setPasteOpen(false);
+    notify('Source added', 'success');
   };
 
   const handleAuth = (user) => {
@@ -851,9 +1009,11 @@ export default function App() {
       const data = kind === 'report' ? { markdown: raw } : cleanJSON(raw);
       clearInterval(progTimer.current);
       setTool({ status: 'done', progress: 100, data, error: null });
+      notify(`${TOOLS.find(t => t.kind === kind)?.title || 'Result'} ready`, 'success');
     } catch (e) {
       clearInterval(progTimer.current);
       setTool({ status: 'error', progress: 0, data: null, error: 'NovaAI could not generate this from the current material. Please try again.' });
+      notify('Could not generate — please try again.', 'error');
     }
   };
 
@@ -1131,6 +1291,7 @@ export default function App() {
   return (
     <div className="app" data-theme={theme}>
       <style>{CSS}</style>
+      <ToastHost />
 
       {!isAuthed ? (
         <AuthScreen theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))} onAuthenticated={handleAuth} accounts={accounts} registerAccount={registerAccount} />
@@ -1886,6 +2047,39 @@ button.list-row{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
   .view-anim,.auth,.main,.auth-form,.modal,.tool-card{animation:none!important}
 }
+
+/* ---------- Toasts ---------- */
+.toast-host{position:fixed;top:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;min-width:230px;max-width:360px;padding:12px 14px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-size:13.5px;pointer-events:auto;
+  animation:toastIn .28s cubic-bezier(.22,1,.36,1)}
+@keyframes toastIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.toast .toast-msg{flex:1;line-height:1.4}
+.toast .toast-ic{flex-shrink:0}
+.toast.success .toast-ic{color:var(--success)}
+.toast.error .toast-ic{color:var(--error)}
+.toast.info .toast-ic{color:var(--primary)}
+.toast button{border:none;background:transparent;color:var(--faint);display:flex;padding:2px}
+.toast button:hover{color:var(--text)}
+
+/* ---------- Export bar + tool result wrapper ---------- */
+.tool-done{display:flex;flex-direction:column}
+.export-bar{max-width:760px;margin:0 auto 14px;width:100%;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ---------- Audio player + speed ---------- */
+.audio-player{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 4px}
+.ar-count{margin-bottom:14px}
+.mp-speed{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}
+.mp-speed button{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600}
+.mp-speed button.on{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+
+/* ---------- Media player (real MP3/MP4) ---------- */
+.mediaplayer{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:16px}
+.mp-audio{width:100%}
+.mp-video{width:100%;border-radius:10px;background:#000;max-height:340px}
+.mp-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
+.mp-dl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);border:1px solid var(--border);border-radius:9px;padding:6px 11px}
+.mp-dl:hover{color:var(--text);border-color:var(--border2)}
 
 /* ---------- Overlay / responsive ---------- */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;display:none}
