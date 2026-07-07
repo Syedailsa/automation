@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays, ScreenshotManager
 from ..selectors import settings
+
+logger = logging.getLogger(__name__)
 
 
 class FlashcardGenerator:
@@ -27,14 +30,14 @@ class FlashcardGenerator:
                 num_input = self.page.locator('input[type="number"], input[placeholder*="card"]').first
                 await num_input.fill('')
                 await num_input.type(str(num_cards), delay=50)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not set card count: {e}")
             
             try:
                 await self.page.click(f'button:has-text("{difficulty}")')
                 await self.delays.random_delay(0.3, 0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not click difficulty button: {e}")
             
             await self.delays.random_delay(0.5, 1.0)
             
@@ -47,6 +50,6 @@ class FlashcardGenerator:
             
             return {'status': 'generated', 'type': 'flashcards'}
         except Exception as e:
-            print(f"Error generating flashcards: {e}")
+            logger.error(f"Error generating flashcards: {e}")
             await self.screenshot_manager.capture_error_screenshot(self.page, "generate_flashcards_error")
             return {'status': 'error', 'error': str(e)}

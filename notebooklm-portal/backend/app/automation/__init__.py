@@ -1,5 +1,6 @@
+"""NotebookLM automation module."""
 from .config import BrowserConfig, Settings, settings
-from .browser_manager import BrowserManager, ScreenshotManager, RetryHandler, RateLimiter, HumanDelays, Selectors
+from .browser_manager import BrowserManager
 from .auth import LoginManager, SessionManager, SessionDetector
 from .notebooks import NotebookManager, SourceManager, ProcessingMonitor
 from .outputs import AudioGenerator, VideoGenerator, QuizGenerator, FlashcardGenerator, SlideGenerator, DownloadManager
@@ -13,3 +14,21 @@ from .batch import BatchSourceAddition, BatchNotebookCreation, BatchOutputGenera
 from .monitoring import OperationLogger, HealthCheck, StatusDashboard, AlertingSystem
 from .testing import ReliabilityTest, PerformanceTest, IntegrationTest
 from .main import NotebookLMAgent
+
+__all__ = [
+    "BrowserConfig", "Settings", "settings",
+    "BrowserManager",
+    "LoginManager", "SessionManager", "SessionDetector",
+    "NotebookManager", "SourceManager", "ProcessingMonitor",
+    "AudioGenerator", "VideoGenerator", "QuizGenerator", "FlashcardGenerator", "SlideGenerator", "DownloadManager",
+    "RetryHandler", "RateLimiter", "HumanDelays",
+    "get_logger", "ScreenshotManager", "VideoRecorder", "SelectorRegistry",
+    "NotebookLMAPI", "AgentAPI", "StatusAPI",
+    "AgentIntegration", "ActionExecutor", "ResultFormatter",
+    "SourceOperations", "GenerationOperations", "StatusTracker",
+    "SessionPool", "ParallelSessionManager", "SessionHealthMonitor",
+    "BatchSourceAddition", "BatchNotebookCreation", "BatchOutputGeneration", "BatchDownload",
+    "OperationLogger", "HealthCheck", "StatusDashboard", "AlertingSystem",
+    "ReliabilityTest", "PerformanceTest", "IntegrationTest",
+    "NotebookLMAgent",
+]

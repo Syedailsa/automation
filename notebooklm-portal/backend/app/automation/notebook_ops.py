@@ -103,7 +103,8 @@ class SessionDetector:
                 if await self.page.locator(selector).count() > 0:
                     return True
             return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Session validation check failed: {e}")
             return False
 
     async def detect_login_page(self) -> bool:

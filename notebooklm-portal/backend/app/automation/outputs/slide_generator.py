@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays, ScreenshotManager
 from ..selectors import settings
+
+logger = logging.getLogger(__name__)
 
 
 class SlideGenerator:
@@ -26,16 +29,16 @@ class SlideGenerator:
             try:
                 await self.page.click(f'button:has-text("{format}")')
                 await self.delays.random_delay(0.3, 0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not click slide format button: {e}")
             
             if num_slides:
                 try:
                     num_input = self.page.locator('input[type="number"], input[placeholder*="slide"]').first
                     await num_input.fill('')
                     await num_input.type(str(num_slides), delay=50)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Could not set slide count: {e}")
             
             await self.delays.random_delay(0.5, 1.0)
             
@@ -48,6 +51,6 @@ class SlideGenerator:
             
             return {'status': 'generated', 'type': 'slides', 'format': format}
         except Exception as e:
-            print(f"Error generating slides: {e}")
+            logger.error(f"Error generating slides: {e}")
             await self.screenshot_manager.capture_error_screenshot(self.page, "generate_slides_error")
             return {'status': 'error', 'error': str(e)}

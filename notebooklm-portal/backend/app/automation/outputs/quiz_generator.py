@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays, ScreenshotManager
 from ..selectors import settings
+
+logger = logging.getLogger(__name__)
 
 
 class QuizGenerator:
@@ -27,14 +30,14 @@ class QuizGenerator:
                 num_input = self.page.locator('input[type="number"], input[placeholder*="question"]').first
                 await num_input.fill('')
                 await num_input.type(str(num_questions), delay=50)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not set question count: {e}")
             
             try:
                 await self.page.click(f'button:has-text("{difficulty}")')
                 await self.delays.random_delay(0.3, 0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not click difficulty button: {e}")
             
             await self.delays.random_delay(0.5, 1.0)
             
@@ -47,6 +50,6 @@ class QuizGenerator:
             
             return {'status': 'generated', 'type': 'quiz'}
         except Exception as e:
-            print(f"Error generating quiz: {e}")
+            logger.error(f"Error generating quiz: {e}")
             await self.screenshot_manager.capture_error_screenshot(self.page, "generate_quiz_error")
             return {'status': 'error', 'error': str(e)}

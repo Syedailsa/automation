@@ -1,4 +1,7 @@
+import logging
 from playwright.async_api import Page
+
+logger = logging.getLogger(__name__)
 
 
 class SessionDetector:
@@ -36,7 +39,8 @@ class SessionDetector:
                     return True
             
             return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Session validation check failed: {e}")
             return False
     
     async def detect_login_page(self) -> bool:

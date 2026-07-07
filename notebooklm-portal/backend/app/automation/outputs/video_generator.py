@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays, ScreenshotManager
 from ..selectors import settings
+
+logger = logging.getLogger(__name__)
 
 
 class VideoGenerator:
@@ -26,16 +29,16 @@ class VideoGenerator:
             try:
                 await self.page.click(f'button:has-text("{style}")')
                 await self.delays.random_delay(0.3, 0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not click video style button: {e}")
             
             if custom_prompt:
                 try:
                     textarea = self.page.locator('textarea, input[placeholder*="prompt"]').first
                     await textarea.fill('')
                     await textarea.type(custom_prompt, delay=30)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Could not fill custom prompt: {e}")
             
             await self.delays.random_delay(0.5, 1.0)
             
@@ -48,7 +51,7 @@ class VideoGenerator:
             
             return {'status': 'generated', 'type': 'video', 'style': style}
         except Exception as e:
-            print(f"Error generating video: {e}")
+            logger.error(f"Error generating video: {e}")
             await self.screenshot_manager.capture_error_screenshot(self.page, "generate_video_error")
             return {'status': 'error', 'error': str(e)}
     

@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays, ScreenshotManager
 from ..selectors import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AudioGenerator:
@@ -26,16 +29,16 @@ class AudioGenerator:
             try:
                 await self.page.click(f'button:has-text("{audio_format}")')
                 await self.delays.random_delay(0.3, 0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not click audio format button: {e}")
             
             if instructions:
                 try:
                     textarea = self.page.locator('textarea, input[placeholder*="instruction"]').first
                     await textarea.fill('')
                     await textarea.type(instructions, delay=30)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Could not fill instructions: {e}")
             
             await self.delays.random_delay(0.5, 1.0)
             
@@ -48,7 +51,7 @@ class AudioGenerator:
             
             return {'status': 'generated', 'type': 'audio', 'format': audio_format}
         except Exception as e:
-            print(f"Error generating audio: {e}")
+            logger.error(f"Error generating audio: {e}")
             await self.screenshot_manager.capture_error_screenshot(self.page, "generate_audio_error")
             return {'status': 'error', 'error': str(e)}
     

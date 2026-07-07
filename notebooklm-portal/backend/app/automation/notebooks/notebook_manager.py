@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from playwright.async_api import Page
 
 from ..browser_manager import HumanDelays
+
+logger = logging.getLogger(__name__)
 
 
 class NotebookManager:
@@ -36,8 +39,8 @@ class NotebookManager:
             notebook_id = await notebook_element.get_attribute('data-notebook-id')
             if notebook_id:
                 return notebook_id
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not find notebook element, using fallback ID: {e}")
         
         return title.lower().replace(' ', '_')
     
@@ -64,7 +67,7 @@ class NotebookManager:
             await self.delays.random_delay(1.0, 2.0)
             return True
         except Exception as e:
-            print(f"Error opening notebook: {e}")
+            logger.error(f"Error opening notebook: {e}")
             return False
     
     async def delete_notebook(self, notebook_id: str) -> bool:
