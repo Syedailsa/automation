@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: notebooklm
+          POSTGRES_PASSWORD: notebooklm_secret
+          POSTGRES_DB: notebooklm_portal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U notebooklm"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run linter
+        run: |
+          cd backend
+          source venv/bin/activate
+          ruff check .
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://notebooklm:notebooklm_secret@localhost:5432/notebooklm_portal_test
+          JWT_SECRET_KEY: test-secret-key
+        run: |
+          cd backend
+          source venv/bin/activate
+          pytest -v --cov=app --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: backend/coverage.xml
+
+  frontend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          composer install --no-interaction
+
+      - name: Run tests
+        run: |
+          cd frontend
+          php artisan test

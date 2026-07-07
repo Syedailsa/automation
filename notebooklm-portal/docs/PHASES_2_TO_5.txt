@@ -1,0 +1,924 @@
+==============================================================================
+       NOTEBOOKLM AGENT PORTAL - PHASE 2 TO 5 TASK BREAKDOWN
+                    For All Team Members (P1-P5)
+==============================================================================
+
+TEAM ROLES:
+  P1 - Backend Lead (FastAPI, Database, Auth)
+  P2 - Frontend Developer (Laravel, UI/UX, Views)
+  P3 - AI Agent Developer (LangChain, LLM Integration)
+  P4 - Automation Engineer (Playwright, Browser Control)
+  P5 - DevOps + QA (Testing, CI/CD, Deployment)
+
+==============================================================================
+                        PHASE 2: INTEGRATION
+==============================================================================
+
+------------------------------------------------------------------------------
+P1 - BACKEND LEAD (INTEGRATION)
+------------------------------------------------------------------------------
+
+API Contract Finalization :
+  - Create OpenAPI spec document
+  - Review all endpoint request/response schemas
+  - Add missing validation rules
+  - Create API error code standardization
+  - Document all endpoint behaviors
+  - Share contract with P2 and P3
+
+Frontend-Backend Integration :
+  - Test all auth endpoints from Laravel
+  - Verify JWT token flow end-to-end
+  - Debug CORS issues between Laravel and FastAPI
+  - Test all CRUD operations via API
+  - Create integration test scripts
+  - Fix any API compatibility issues
+
+Agent Integration :
+  - Connect agent endpoints to notebook_service
+  - Test agent -> API -> database flow
+  - Implement execution_log creation on agent calls
+  - Add WebSocket connection for agent status
+  - Test real-time updates from agent
+  - Handle agent error propagation
+
+Automation Integration:
+  - Connect Playwright auth_handler to auth endpoints
+  - Test per-user NotebookLM profile storage
+  - Implement browser agent API endpoints
+  - Test automation -> API -> database flow
+  - Add browser status tracking in database
+  - Handle browser session expiration
+
+ Integration Testing :
+  - Run full integration test suite
+  - Fix all integration bugs
+  - Document known issues
+  - Create API postman collection
+  - Performance test all endpoints
+  - Security review of API
+
+------------------------------------------------------------------------------
+P2 - FRONTEND DEVELOPER (INTEGRATION)
+------------------------------------------------------------------------------
+
+API Client Integration
+  - Create FastApiClient service methods for all endpoints
+  - Implement JWT token storage in session
+  - Add authentication middleware
+  - Test login flow with FastAPI backend
+  - Handle token refresh logic
+  - Create error handling for API calls
+
+Dashboard Integration
+  - Connect notebook list to GET /api/notebooks
+  - Connect notebook create to POST /api/notebooks
+  - Implement real-time notebook count updates
+  - Add loading states for all API calls
+  - Handle API error responses in UI
+  - Test all dashboard operations
+
+Notebook Detail Integration
+  - Connect source list to GET /api/notebooks/{id}/sources
+  - Connect source add to POST /api/notebooks/{id}/sources/*
+  - Implement source delete with confirmation
+  - Add source processing status display
+  - Connect output list to GET /api/notebooks/{id}/outputs
+  - Test all notebook operations
+
+Agent Integration
+  - Connect agent input to POST /api/agent/refine
+  - Connect agent execute to POST /api/agent/execute
+  - Implement WebSocket for real-time status
+  - Add execution progress display
+  - Show execution history from API
+  - Test agent workflow end-to-end
+
+UI Testing and Polish
+  - Test all pages with FastAPI backend
+  - Fix all UI bugs
+  - Add error toast notifications
+  - Implement retry logic for failed API calls
+  - Add skeleton loading states
+  - Cross-browser testing
+
+------------------------------------------------------------------------------
+P3 - AI AGENT DEVELOPER (INTEGRATION)
+------------------------------------------------------------------------------
+
+API Endpoint Integration
+  - Connect refine_input to POST /api/agent/refine
+  - Connect execute_workflow to POST /api/agent/execute
+  - Add execution_log creation on each call
+  - Implement execution status tracking
+  - Add error logging to database
+  - Test API endpoint responses
+
+Playwright Integration
+  - Import and use P4's automation classes
+  - Connect action_executor to Playwright operations
+  - Test agent -> Playwright flow
+  - Handle Playwright errors in agent
+  - Add retry logic for Playwright failures
+  - Test notebook creation via agent
+
+LLM Provider Integration
+  - Connect llm_provider.py to API key from user settings
+  - Test OpenAI integration
+  - Test Claude integration
+  - Test Ollama integration
+  - Add fallback between providers
+  - Handle LLM API rate limits
+
+Workflow Testing
+  - Test full workflow: Input -> LLM -> Actions -> Playwright -> Results
+  - Test Roman Urdu input flow
+  - Test English input flow
+  - Test multi-action workflows
+  - Test error recovery
+  - Document all edge cases
+
+Optimization
+  - Optimize prompt templates
+  - Reduce LLM token usage
+  - Add response caching
+  - Optimize action execution speed
+  - Add parallel action support
+  - Performance benchmarks
+
+------------------------------------------------------------------------------
+P4 - AUTOMATION ENGINEER (INTEGRATION)
+------------------------------------------------------------------------------
+
+API Integration
+  - Connect browser_manager to FastAPI endpoints
+  - Implement /api/notebooklm/connect endpoint
+  - Implement /api/notebooklm/status endpoint
+  - Implement /api/notebooklm/disconnect endpoint
+  - Add per-user profile management
+  - Test auth flow via API
+
+Agent Integration
+  - Create agent-compatible interface for automation
+  - Implement execute_action method for agent
+  - Add action result formatting
+  - Handle concurrent browser sessions
+  - Add session pooling
+  - Test agent -> automation flow
+
+Source Operations Integration
+  - Connect source_ops to API endpoints
+  - Test URL source addition via API
+  - Test text source addition via API
+  - Test YouTube source addition via API
+  - Test file upload via API
+  - Add source processing status updates
+
+Generation Operations Integration
+  - Connect generation_ops to API endpoints
+  - Test audio generation via API
+  - Test video generation via API
+  - Test quiz generation via API
+  - Test flashcard generation via API
+  - Add generation status tracking
+
+Reliability Testing
+  - Test 100+ browser operations
+  - Monitor memory usage
+  - Test session persistence
+  - Test error recovery
+  - Add automatic re-login
+  - Performance benchmarks
+
+------------------------------------------------------------------------------
+P5 - DEVOPS + QA (INTEGRATION)
+------------------------------------------------------------------------------
+
+Docker Integration
+  - Test docker-compose.dev.yml with all services
+  - Verify PostgreSQL connection from backend
+  - Test backend container startup
+  - Add health check endpoints
+  - Test volume mounts
+  - Fix any Docker issues
+
+CI/CD Pipeline
+  - Create GitHub Actions workflow for PRs
+  - Add Python linting to CI
+  - Add PHP linting to CI
+  - Add test execution to CI
+  - Add Docker build to CI
+  - Test CI pipeline
+
+Integration Test Framework
+  - Create pytest fixtures for API testing
+  - Create test database setup
+  - Add API integration tests
+  - Add frontend feature tests
+  - Add agent integration tests
+  - Achieve 60% test coverage
+
+Documentation
+  - Update API.md with all endpoints
+  - Update SETUP.md with Docker instructions
+  - Update ARCHITECTURE.md with integration details
+  - Create TROUBLESHOOTING.md
+  - Add code comments to complex logic
+  - Document all environment variables
+
+Quality Assurance
+  - Run full test suite
+  - Fix all failing tests
+  - Code review for all team members
+  - Security audit
+  - Performance baseline
+  - Bug tracking setup
+
+
+==============================================================================
+                        PHASE 3: FEATURES
+==============================================================================
+
+------------------------------------------------------------------------------
+P1 - BACKEND LEAD (FEATURES)
+------------------------------------------------------------------------------
+
+File Upload Endpoints
+  - POST /api/notebooks/{id}/sources/file
+  - Implement file validation (size, type)
+  - Add file storage to user directory
+  - Create file metadata in database
+  - Handle multipart form data
+  - Add file cleanup on error
+
+ WebSocket Real-time Updates
+  - Implement /ws/notebooks/{id}/sources
+  - Implement /ws/agent/{execution_id}
+  - Add connection authentication
+  - Broadcast source processing status
+  - Broadcast agent execution status
+  - Handle connection drops
+
+Rate Limiting and Caching
+  - Add rate limiting middleware
+  - Implement Redis caching layer
+  - Cache notebook list responses
+  - Cache user settings
+  - Add cache invalidation
+  - Rate limit per-user endpoints
+
+Background Tasks
+  - Set up Celery with Redis
+  - Create background task for file processing
+  - Create background task for agent execution
+  - Add task status tracking
+  - Implement task cancellation
+  - Add task retry logic
+
+ API Versioning
+  - Create /api/v1/ namespace
+  - Migrate all endpoints to v1
+  - Add version header support
+  - Create deprecation warnings
+  - Update API documentation
+  - Test backward compatibility
+
+------------------------------------------------------------------------------
+P2 - FRONTEND DEVELOPER (FEATURES)
+------------------------------------------------------------------------------
+
+Real-time Progress Indicators
+  - Add WebSocket connection for source status
+  - Show processing spinner for sources
+  - Add progress bar for generation
+  - Show real-time agent execution steps
+  - Add toast notifications for status updates
+  - Handle connection losses
+
+File Upload UI
+  - Create drag-and-drop upload zone
+  - Add file type validation
+  - Show upload progress
+  - Handle upload errors
+  - Preview uploaded files
+  - Add multiple file upload
+
+Media Players
+  - Add audio player for MP3 files
+  - Add video player for MP4 files
+  - Create transcript viewer
+  - Add download buttons
+  - Implement playlist for multiple files
+  - Add playback speed controls
+
+Quiz and Flashcard Renderer
+  - Create quiz component with radio buttons
+  - Add quiz scoring logic
+  - Create flashcard flip animation
+  - Add flashcard navigation
+  - Implement quiz results view
+  - Add export to PDF option
+
+Export Options
+  - Add export to PDF for quizzes
+  - Add export to CSV for flashcards
+  - Add print-friendly view
+  - Create shareable links
+  - Add email export option
+  - Implement batch export
+
+------------------------------------------------------------------------------
+P3 - AI AGENT DEVELOPER (FEATURES)
+------------------------------------------------------------------------------
+
+Multi-step Workflows
+  - Create workflow parser for complex requests
+  - Implement sequential action execution
+  - Add dependency resolution between actions
+  - Handle partial workflow failures
+  - Add workflow rollback logic
+  - Test complex workflows
+
+Parallel Source Addition
+  - Add parallel source processing
+  - Implement source priority queuing
+  - Handle concurrent NotebookLM operations
+  - Add source deduplication
+  - Implement source conflict resolution
+  - Test parallel operations
+
+Smart Retry Logic
+  - Add exponential backoff retry
+  - Implement retry for Playwright failures
+  - Add retry for LLM API rate limits
+  - Create retry with fallback providers
+  - Add retry for network errors
+  - Test retry scenarios
+
+Output Optimization
+  - Optimize audio generation prompts
+  - Optimize video generation prompts
+  - Add custom prompt templates
+  - Implement prompt versioning
+  - Add A/B testing for prompts
+  - Measure output quality
+
+Agent Memory and History
+  - Implement conversation memory
+  - Add context from previous executions
+  - Create execution history search
+  - Add execution comparison
+  - Implement learning from feedback
+  - Test memory persistence
+
+------------------------------------------------------------------------------
+P4 - AUTOMATION ENGINEER (FEATURES)
+------------------------------------------------------------------------------
+
+Parallel Browser Sessions
+  - Implement browser session pooling
+  - Add concurrent notebook operations
+  - Create session rotation logic
+  - Handle session conflicts
+  - Add session health monitoring
+  - Test parallel sessions
+
+Batch Operations
+  - Create batch source addition
+  - Implement batch notebook creation
+  - Add batch output generation
+  - Create batch download
+  - Add batch status tracking
+  - Test batch operations
+
+Screenshot and Video Recording
+  - Add screenshot on error
+  - Implement video recording for debugging
+  - Create screenshot comparison
+  - Add visual regression testing
+  - Implement screenshot upload
+  - Test recording features
+
+Custom Selectors
+  - Create selector configuration file
+  - Implement selector fallback logic
+  - Add selector auto-detection
+  - Create selector testing tool
+  - Add selector versioning
+  - Test selector updates
+
+Fallback Strategies
+  - Implement API fallback for automation
+  - Add manual intervention triggers
+  - Create alternative navigation paths
+  - Handle UI changes gracefully
+  - Add graceful degradation
+  - Test fallback scenarios
+
+------------------------------------------------------------------------------
+P5 - DEVOPS + QA (FEATURES)
+------------------------------------------------------------------------------
+
+E2E Test Suite
+  - Create Playwright E2E tests
+  - Test login flow end-to-end
+  - Test notebook creation flow
+  - Test source addition flow
+  - Test output generation flow
+  - Achieve 80% E2E coverage
+
+Load Testing
+  - Set up Locust for load testing
+  - Create load test scenarios
+  - Test 100 concurrent users
+  - Test 1000 concurrent users
+  - Identify bottlenecks
+  - Optimize based on results
+
+Security Testing
+  - Test SQL injection prevention
+  - Test XSS prevention
+  - Test CSRF protection
+  - Test authentication bypass
+  - Test authorization checks
+  - Fix all security issues
+
+Accessibility Testing
+  - Add ARIA labels to all components
+  - Test keyboard navigation
+  - Test screen reader compatibility
+  - Add color contrast checks
+  - Implement focus management
+  - Achieve WCAG 2.1 compliance
+
+Performance Monitoring
+  - Set up Prometheus metrics
+  - Create Grafana dashboards
+  - Add API response time tracking
+  - Add database query monitoring
+  - Create alert rules
+  - Test monitoring alerts
+
+
+==============================================================================
+                        PHASE 4: POLISH
+==============================================================================
+
+------------------------------------------------------------------------------
+P1 - BACKEND LEAD (POLISH)
+------------------------------------------------------------------------------
+
+API Hardening
+  - Add input validation to all endpoints
+  - Implement rate limiting per endpoint
+  - Add request logging
+  - Create API metrics collection
+  - Add health check endpoints
+  - Document all error codes
+
+Database Optimization
+  - Add database indexes
+  - Optimize slow queries
+  - Implement connection pooling
+  - Add query caching
+  - Create database backups
+  - Test database performance
+
+Error Handling
+  - Create global error handler
+  - Implement error logging
+  - Add error notification system
+  - Create error recovery procedures
+  - Add graceful shutdown
+  - Test error scenarios
+
+Code Quality
+  - Run full code review
+  - Fix all linting issues
+  - Add type hints to all functions
+  - Update docstrings
+  - Remove unused code
+  - Refactor complex functions
+
+Final Testing
+  - Run full test suite
+  - Fix all remaining bugs
+  - Performance optimization
+  - Security hardening
+  - Documentation finalization
+  - Release preparation
+
+------------------------------------------------------------------------------
+P2 - FRONTEND DEVELOPER (POLISH)
+------------------------------------------------------------------------------
+
+UI Polish
+  - Add animations to all transitions
+  - Implement loading skeletons
+  - Add empty state designs
+  - Create error page designs
+  - Add success animations
+  - Polish all micro-interactions
+
+Mobile Responsive
+  - Test all pages on mobile
+  - Fix mobile layout issues
+  - Add touch gestures
+  - Implement mobile navigation
+  - Add responsive images
+  - Test on multiple devices
+
+Performance Optimization
+  - Implement lazy loading
+  - Add code splitting
+  - Optimize images
+  - Add caching headers
+  - Implement service worker
+  - Test page load times
+
+Accessibility
+  - Add keyboard shortcuts
+  - Implement focus management
+  - Add screen reader support
+  - Test with assistive technologies
+  - Fix all accessibility issues
+  - Achieve WCAG 2.1 AA
+
+Final Polish
+  - Cross-browser testing
+  - Fix all visual bugs
+  - Add final animations
+  - Optimize bundle size
+  - Test production build
+  - Release preparation
+
+------------------------------------------------------------------------------
+P3 - AI AGENT DEVELOPER (POLISH)
+------------------------------------------------------------------------------
+
+Prompt Optimization
+  - Analyze prompt performance
+  - Optimize token usage
+  - Reduce prompt length
+  - Improve response quality
+  - Add prompt caching
+  - Test optimized prompts
+
+Response Quality
+  - Analyze user feedback
+  - Improve action accuracy
+  - Reduce false positives
+  - Add confidence scoring
+  - Implement quality metrics
+  - Test quality improvements
+
+Error Recovery
+  - Improve error messages
+  - Add automatic recovery
+  - Implement fallback actions
+  - Add manual override options
+  - Test error scenarios
+
+Performance
+  - Optimize LLM calls
+  - Reduce API latency
+  - Add response caching
+  - Implement batch processing
+  - Test performance improvements
+
+Final Testing
+  - Run full test suite
+  - Fix all remaining bugs
+  - Performance optimization
+  - Documentation finalization
+  - Release preparation
+
+------------------------------------------------------------------------------
+P4 - AUTOMATION ENGINEER (POLISH)
+------------------------------------------------------------------------------
+
+Reliability
+  - Add automatic recovery
+  - Implement session refresh
+  - Add error detection
+  - Create fallback paths
+  - Test reliability scenarios
+
+Performance
+  - Optimize browser operations
+  - Reduce memory usage
+  - Add parallel processing
+  - Implement caching
+  - Test performance improvements
+
+Monitoring
+  - Add operation logging
+  - Implement health checks
+  - Create status dashboard
+  - Add alerting
+  - Test monitoring
+
+Documentation
+  - Document all selectors
+  - Create troubleshooting guide
+  - Add code comments
+  - Document known issues
+  - Create maintenance guide
+
+Final Testing
+  - Run full test suite
+  - Fix all remaining bugs
+  - Performance optimization
+  - Documentation finalization
+  - Release preparation
+
+------------------------------------------------------------------------------
+P5 - DEVOPS + QA (POLISH)
+------------------------------------------------------------------------------
+
+Deployment Setup
+  - Create production Docker config
+  - Set up deployment pipeline
+  - Configure environment variables
+  - Set up SSL certificates
+  - Test deployment
+  - Create rollback procedure
+
+Monitoring and Alerting
+  - Set up application monitoring
+  - Create alert rules
+  - Configure notification channels
+  - Set up log aggregation
+  - Test alerting
+  - Create runbooks
+
+Backup and Recovery
+  - Set up database backups
+  - Test backup restoration
+  - Create disaster recovery plan
+  - Test failover procedures
+  - Document recovery steps
+  - Test backup schedule
+
+Final QA
+  - Run full test suite
+  - Fix all remaining bugs
+  - Performance validation
+  - Security validation
+  - Accessibility validation
+  - Sign-off testing
+
+Release
+  - Create release notes
+  - Tag release version
+  - Deploy to production
+  - Monitor deployment
+  - Verify production
+  - Post-launch support
+
+
+==============================================================================
+                        PHASE 5: DEPLOYMENT
+==============================================================================
+
+------------------------------------------------------------------------------
+P1 - BACKEND LEAD (DEPLOYMENT)
+------------------------------------------------------------------------------
+
+Production Database
+  - Set up production PostgreSQL
+  - Configure connection pooling
+  - Set up database monitoring
+  - Create backup schedule
+  - Test database performance
+  - Document database procedures
+
+Production API
+  - Deploy FastAPI to production
+  - Configure production settings
+  - Set up API monitoring
+  - Create API documentation
+  - Test all endpoints
+  - Document API procedures
+
+Security Hardening
+  - Review all security measures
+  - Fix any security issues
+  - Add security monitoring
+  - Create security documentation
+  - Test security measures
+  - Penetration testing
+
+Performance Tuning
+  - Optimize database queries
+  - Add caching layer
+  - Configure CDN
+  - Optimize API responses
+  - Test performance
+  - Load testing
+
+Final Verification
+  - Run full test suite
+  - Verify all endpoints
+  - Test all workflows
+  - Document all procedures
+  - Sign off on deployment
+  - Post-launch monitoring
+
+------------------------------------------------------------------------------
+P2 - FRONTEND DEVELOPER (DEPLOYMENT)
+------------------------------------------------------------------------------
+
+Production Build
+  - Create production build
+  - Optimize bundle size
+  - Configure CDN
+  - Set up caching headers
+  - Test production build
+  - Verify all assets
+
+Production Deployment
+  - Deploy to production server
+  - Configure SSL
+  - Set up domain
+  - Test all pages
+  - Document deployment
+  - Verify deployment
+
+Performance Optimization
+  - Optimize images
+  - Implement lazy loading
+  - Add service worker
+  - Test page load times
+  - Optimize Core Web Vitals
+  - Monitor performance
+
+Cross-browser Testing
+  - Test on Chrome
+  - Test on Firefox
+  - Test on Safari
+  - Test on Edge
+  - Fix any issues
+  - Document compatibility
+
+Final Verification
+  - Run full test suite
+  - Verify all pages
+  - Test all workflows
+  - Document all procedures
+  - Sign off on deployment
+  - Post-launch monitoring
+
+------------------------------------------------------------------------------
+P3 - AI AGENT DEVELOPER (DEPLOYMENT)
+------------------------------------------------------------------------------
+
+Production Configuration
+  - Configure production LLM providers
+  - Set up API keys
+  - Configure rate limits
+  - Test all providers
+  - Document configuration
+  - Verify API access
+
+Production Testing
+  - Test all agent workflows
+  - Verify all actions work
+  - Test error handling
+  - Document known issues
+  - Create troubleshooting guide
+  - Verify agent reliability
+
+ Performance Validation
+  - Test response times
+  - Verify token usage
+  - Test concurrent requests
+  - Optimize bottlenecks
+  - Document performance
+  - Load test agent
+
+Monitoring Setup
+  - Set up agent monitoring
+  - Create dashboards
+  - Configure alerts
+  - Test monitoring
+  - Document procedures
+  - Verify alerting
+
+Final Verification
+  - Run full test suite
+  - Verify all workflows
+  - Test all error scenarios
+  - Document all procedures
+  - Sign off on deployment
+  - Post-launch monitoring
+
+------------------------------------------------------------------------------
+P4 - AUTOMATION ENGINEER (DEPLOYMENT)
+------------------------------------------------------------------------------
+
+Production Browser Setup
+  - Configure production browsers
+  - Set up browser profiles
+  - Test browser operations
+  - Document configuration
+  - Create maintenance guide
+  - Verify browser access
+
+ Production Testing
+  - Test all automation workflows
+  - Verify all operations work
+  - Test error handling
+  - Document known issues
+  - Create troubleshooting guide
+  - Verify automation reliability
+
+Reliability Validation
+  - Test 1000+ operations
+  - Monitor memory usage
+  - Test session persistence
+  - Optimize performance
+  - Document reliability
+  - Stress testing
+
+ Monitoring Setup
+  - Set up automation monitoring
+  - Create dashboards
+  - Configure alerts
+  - Test monitoring
+  - Document procedures
+  - Verify alerting
+
+ Final Verification
+  - Run full test suite
+  - Verify all operations
+  - Test all error scenarios
+  - Document all procedures
+  - Sign off on deployment
+  - Post-launch monitoring
+
+------------------------------------------------------------------------------
+P5 - DEVOPS + QA (DEPLOYMENT)
+------------------------------------------------------------------------------
+
+Production Infrastructure
+  - Set up production servers
+  - Configure networking
+  - Set up load balancers
+  - Configure SSL
+  - Test infrastructure
+  - Document infrastructure
+
+ Deployment Pipeline
+  - Create deployment scripts
+  - Set up CI/CD pipeline
+  - Configure environments
+  - Test deployment
+  - Create rollback procedures
+  - Document deployment
+
+Monitoring and Alerting
+  - Set up infrastructure monitoring
+  - Create alert rules
+  - Configure notifications
+  - Test alerting
+  - Create runbooks
+  - Verify monitoring
+
+Final QA
+  - Run full test suite
+  - Verify all features
+  - Test all workflows
+  - Security validation
+  - Sign-off testing
+  - Bug fixes
+
+Launch
+  - Deploy to production
+  - Verify deployment
+  - Monitor launch
+  - Handle issues
+  - Post-launch support
+  - Launch documentation
+
+
+==============================================================================
+                        SUMMARY TABLE
+==============================================================================
+
++----------+------------+------------+------------+------------+------------+
+|  Phase   |  P1 Tasks  |  P2 Tasks  |  P3 Tasks  |  P4 Tasks  |  P5 Tasks  |
++----------+------------+------------+------------+------------+------------+
+| Phase 2  |     40     |     38     |     36     |     38     |     36     |
+| Phase 3  |     42     |     40     |     38     |     40     |     38     |
+| Phase 4  |     38     |     36     |     34     |     34     |     36     |
+| Phase 5  |     36     |     34     |     32     |     32     |     34     |
++----------+------------+------------+------------+------------+------------+
+|  TOTAL   |    156     |    148     |    140     |    144     |    144     |
++----------+------------+------------+------------+------------+------------+
+
+Total Tasks Across All Team Members: 732
+
+==============================================================================
+                        END OF DOCUMENT
+==============================================================================

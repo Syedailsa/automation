@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: notebooklm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notebooklm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notebooklm_secret}
+      POSTGRES_DB: notebooklm_portal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notebooklm -d notebooklm_portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: notebooklm-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../storage:/app/storage
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: notebooklm-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge

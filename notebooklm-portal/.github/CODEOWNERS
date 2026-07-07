@@ -1,0 +1,24 @@
+# Default owners for everything in the repo
+* @Syedailsa
+
+# Backend (P1)
+/backend/app/api/ @Syedailsa
+/backend/app/services/ @Syedailsa
+/backend/app/models/ @Syedailsa
+/backend/app/core/ @Syedailsa
+/backend/alembic/ @Syedailsa
+
+# Frontend (P2)
+/frontend/ @Syedailsa
+
+# AI Agent (P3)
+/backend/app/agents/ @Syedailsa
+
+# Automation (P4)
+/backend/app/automation/ @Syedailsa
+
+# DevOps (P5)
+/docker/ @Syedailsa
+/.github/ @Syedailsa
+/scripts/ @Syedailsa
+/docs/ @Syedailsa
