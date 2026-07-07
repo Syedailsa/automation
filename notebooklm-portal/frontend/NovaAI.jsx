@@ -105,16 +105,16 @@ const timeAgo = (ts) => {
 /* ---------- logo mark ---------- */
 function NovaMark({ size = 26 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" className="nova-mark" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" className="nova-mark" aria-hidden="true">
       <defs>
         <linearGradient id="ng" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3B82F6" />
           <stop offset="1" stopColor="#8B5CF6" />
         </linearGradient>
       </defs>
-      <circle cx="16" cy="16" r="11" fill="none" stroke="url(#ng)" strokeWidth="2" opacity="0.45" />
-      <circle cx="16" cy="16" r="5" fill="url(#ng)" />
-      <g className="nova-orbit"><circle cx="27" cy="16" r="2.4" fill="#8B5CF6" /></g>
+      <rect width="64" height="64" rx="14" fill="url(#ng)" />
+      <text x="32" y="44" fontFamily="system-ui,sans-serif" fontSize="36" fontWeight="700" textAnchor="middle" fill="white">N</text>
+      <g className="nova-orbit"><circle cx="50" cy="14" r="5" fill="white" opacity="0.9" /></g>
     </svg>
   );
 }
