@@ -15,6 +15,6 @@ async def delete_output(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    output = await output_service.get_output_by_id(db, output_id)
+    output = await output_service.get_output_by_id(db, output_id, current_user.id)
     await output_service.delete_output(db, output)
     return {"message": "Output deleted successfully"}

@@ -25,8 +25,13 @@ async def list_notebook_outputs(
     return list(result.scalars().all()), total
 
 
-async def get_output_by_id(db: AsyncSession, output_id: uuid.UUID) -> Output:
-    result = await db.execute(select(Output).where(Output.id == output_id))
+async def get_output_by_id(
+    db: AsyncSession, output_id: uuid.UUID, user_id: uuid.UUID | None = None
+) -> Output:
+    query = select(Output).where(Output.id == output_id)
+    if user_id is not None:
+        query = query.where(Output.user_id == user_id)
+    result = await db.execute(query)
     output = result.scalar_one_or_none()
     if not output:
         raise NotFoundException("Output not found")

@@ -1,10 +1,14 @@
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+import uuid
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
+from app.core.exceptions import AppException
 from app.database import init_db
 from app.api import auth, users, notebooks, sources, outputs, agent, ws
 
@@ -16,9 +20,82 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="NotebookLM Portal API",
+    description="Multi-user web portal integrating Google NotebookLM with AI agents and browser automation.",
+    version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
+
+
+# --- Global Exception Handlers ---
+
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.status_code,
+                "message": exc.detail,
+            }
+        },
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    if "invalidly formed UUID" in str(exc) or " badly formed hexadecimal UUID" in str(exc):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": 422,
+                    "message": "Invalid UUID format",
+                }
+            },
+        )
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": 400,
+                "message": str(exc) or "Invalid input",
+            }
+        },
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=409,
+        content={
+            "error": {
+                "code": 409,
+                "message": "Resource already exists or constraint violation",
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": 500,
+                "message": "Internal server error",
+            }
+        },
+    )
+
+
+# --- CORS ---
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,6 +104,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# --- Routers ---
+
 
 app.include_router(auth.router)
 app.include_router(users.router)
@@ -37,6 +118,10 @@ app.include_router(agent.router)
 app.include_router(ws.router)
 
 
-@app.get("/api/health")
+# --- Health Check ---
+
+
+@app.get("/api/health", tags=["health"])
 async def health_check() -> dict[str, str]:
+    """Health check endpoint for monitoring and load balancers."""
     return {"status": "ok"}

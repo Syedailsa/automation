@@ -1,4 +1,12 @@
+from enum import Enum
+
 from pydantic import BaseModel, EmailStr
+
+
+class PreferredLLM(str, Enum):
+    openai = "openai"
+    anthropic = "anthropic"
+    google = "google"
 
 
 class GoogleRedirectResponse(BaseModel):

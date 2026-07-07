@@ -1,17 +1,24 @@
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class NotebookStatus(str, Enum):
+    active = "active"
+    archived = "archived"
+    processing = "processing"
 
 
 class NotebookCreate(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str | None = Field(None, max_length=5000)
 
 
 class NotebookUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    status: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=500)
+    description: str | None = Field(None, max_length=5000)
+    status: NotebookStatus | None = None
 
 
 class NotebookResponse(BaseModel):

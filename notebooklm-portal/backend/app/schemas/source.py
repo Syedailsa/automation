@@ -1,13 +1,28 @@
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SourceType(str, Enum):
+    url = "url"
+    text = "text"
+    file = "file"
+    youtube = "youtube"
+    google_doc = "google_doc"
+
+
+class SourceStatus(str, Enum):
+    processing = "processing"
+    ready = "ready"
+    error = "error"
 
 
 class SourceCreate(BaseModel):
-    title: str
-    source_type: str
-    url: str | None = None
-    content: str | None = None
+    title: str = Field(..., min_length=1, max_length=500)
+    source_type: SourceType | None = None
+    url: str | None = Field(None, max_length=2000)
+    content: str | None = Field(None, max_length=500000)
 
 
 class SourceResponse(BaseModel):

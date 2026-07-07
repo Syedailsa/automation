@@ -53,7 +53,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     current_user.access_token = None
     current_user.refresh_token = None
+    await db.commit()
     return {"message": "Logged out successfully"}

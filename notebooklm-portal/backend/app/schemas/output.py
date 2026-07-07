@@ -1,6 +1,16 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel
+
+
+class OutputType(str, Enum):
+    summary = "summary"
+    quiz = "quiz"
+    study_guide = "study_guide"
+    transcript = "transcript"
+    mind_map = "mind_map"
+    audio_overview = "audio_overview"
 
 
 class OutputResponse(BaseModel):

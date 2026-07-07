@@ -68,3 +68,19 @@ async def update_notebook(
 async def delete_notebook(db: AsyncSession, notebook: Notebook) -> None:
     await db.delete(notebook)
     await db.flush()
+
+
+async def increment_source_count(db: AsyncSession, notebook_id: uuid.UUID) -> None:
+    result = await db.execute(select(Notebook).where(Notebook.id == notebook_id))
+    notebook = result.scalar_one_or_none()
+    if notebook:
+        notebook.source_count = (notebook.source_count or 0) + 1
+        await db.flush()
+
+
+async def decrement_source_count(db: AsyncSession, notebook_id: uuid.UUID) -> None:
+    result = await db.execute(select(Notebook).where(Notebook.id == notebook_id))
+    notebook = result.scalar_one_or_none()
+    if notebook and (notebook.source_count or 0) > 0:
+        notebook.source_count = notebook.source_count - 1
+        await db.flush()
