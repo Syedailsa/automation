@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -24,6 +25,13 @@ class AgentExecuteResponse(BaseModel):
     status: str = "pending"
 
 
+class ExecutionEventSchema(BaseModel):
+    type: str
+    description: str
+    data: Dict[str, Any] | None = None
+    timestamp: str
+
+
 class ExecutionLogResponse(BaseModel):
     id: str
     user_id: str
@@ -37,6 +45,7 @@ class ExecutionLogResponse(BaseModel):
     duration_ms: int | None = None
     created_at: datetime
     completed_at: datetime | None = None
+    events: List[ExecutionEventSchema] | None = None
 
     class Config:
         from_attributes = True

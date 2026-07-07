@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     # LLM Keys
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
+    FIREWORKS_API_KEY: str = ""
+
+    # LLM Settings
+    LLM_DEFAULT_PROVIDER: str = "openrouter"
+    LLM_DEFAULT_MODEL: str = "qwen/qwen3.7-max"
+    LLM_FALLBACK_PROVIDERS: str = "openai,anthropic,ollama"
+    LLM_MAX_RETRIES: int = 3
+    LLM_TIMEOUT_SECONDS: int = 60
 
     # Storage
     NOTEBOOKLM_STORAGE_BASE: str = "storage/"
