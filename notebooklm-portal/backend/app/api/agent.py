@@ -195,8 +195,8 @@ async def chat(
     authorization: str = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Chat endpoint — routes through NotebookLM pipeline if user is authenticated."""
-    # Get user if token provided
+    """Chat endpoint — always uses raw LLM. NotebookLM integration is opt-in via /execute."""
+    # Get user if token provided (for future use)
     current_user = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "")
@@ -220,31 +220,7 @@ async def chat(
             else:
                 user_message = str(content)
 
-    # If provider is explicitly "llm", skip NotebookLM pipeline (for tool generation)
-    use_notebooklm = body.provider != "llm"
-
-    # If user is authenticated with Google tokens and not forced to llm, use NotebookLM pipeline
-    if use_notebooklm and current_user and current_user.access_token:
-        from app.services.notebooklm_chat import chat_with_notebooklm
-        try:
-            response = await chat_with_notebooklm(
-                user_id=str(current_user.id),
-                message=user_message,
-                google_access_token=current_user.access_token,
-                google_refresh_token=current_user.refresh_token,
-            )
-            # Only use if it's not an error message
-            if response and not response.startswith("Could not connect") and not response.startswith("Error"):
-                return ChatResponse(
-                    content=response,
-                    provider="notebooklm",
-                    model="notebooklm",
-                )
-        except Exception as e:
-            logger.error(f"NotebookLM pipeline error: {e}")
-            # Fall through to raw LLM
-
-    # Fallback: raw LLM response (no NotebookLM connection)
+    # Always use raw LLM for chat — NotebookLM is only used via explicit /execute endpoint
     llm = LLMProvider()
     system_prompt = body.system or "You are a helpful assistant."
 
