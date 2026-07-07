@@ -96,6 +96,7 @@ class NotebookLMAgent:
         user_input: str,
         notebook_id: Optional[str] = None,
         on_event: Optional[Callable] = None,
+        conversation_context: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         self.execution_id = str(uuid.uuid4())
         if on_event:
@@ -106,7 +107,10 @@ class NotebookLMAgent:
 
         try:
             await self._emit("thinking", "Analyzing user request and planning actions")
-            actions = await self.planner.plan_actions(user_input)
+            actions = await self.planner.plan_actions(
+                user_input,
+                conversation_context=conversation_context,
+            )
             events.append({
                 "type": "plan_created",
                 "actions": actions,

@@ -10,8 +10,22 @@ class ActionPlanner:
         self.llm = llm_provider
         self.templates = PromptTemplates()
 
-    async def plan_actions(self, user_input: str) -> List[Dict[str, Any]]:
-        prompt = self.templates.ACTION_PLANNER_PROMPT.format(user_input=user_input)
+    async def plan_actions(
+        self,
+        user_input: str,
+        conversation_context: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        context_str = ""
+        if conversation_context:
+            context_str = "\n\nPrevious conversation:\n"
+            for ctx in conversation_context:
+                context_str += f"- User asked: {ctx.get('input', '')[:100]}\n"
+                if ctx.get("result_summary"):
+                    context_str += f"  Result: {ctx['result_summary'][:100]}\n"
+
+        prompt = self.templates.ACTION_PLANNER_PROMPT.format(
+            user_input=user_input
+        ) + context_str
 
         response = await self.llm.generate(
             prompt=prompt,

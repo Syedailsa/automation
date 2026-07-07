@@ -39,3 +39,9 @@ htmlcov/
 
 # Project Config (contains secrets)
 .project_config.json
+
+# Backend env
+backend/.env
+
+# Project config (contains secrets)
+.project_config.json

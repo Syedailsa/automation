@@ -38,8 +38,8 @@ class Settings(BaseSettings):
 
     # LLM Settings
     LLM_DEFAULT_PROVIDER: str = "openrouter"
-    LLM_DEFAULT_MODEL: str = "qwen/qwen3.7-max"
-    LLM_FALLBACK_PROVIDERS: str = "openai,anthropic,ollama"
+    LLM_DEFAULT_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+    LLM_FALLBACK_PROVIDERS: str = "openrouter"
     LLM_MAX_RETRIES: int = 3
     LLM_TIMEOUT_SECONDS: int = 60
 
@@ -52,6 +52,20 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:80"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # Database Pool
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
+
+    # Rate Limit Tiers (requests per hour, 0 = unlimited)
+    RATE_LIMIT_FREE: int = 50
+    RATE_LIMIT_PRO: int = 200
+    RATE_LIMIT_ADMIN: int = 0
 
 
 settings = Settings()
