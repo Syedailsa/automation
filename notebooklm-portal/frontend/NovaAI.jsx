@@ -644,10 +644,18 @@ const NAV = [
 ];
 
 export default function App() {
-  const [theme, setTheme] = useState('dark');
+  // localStorage persistence helpers
+  const loadState = (key, fallback) => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  };
+  const saveState = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  };
+
+  const [theme, setTheme] = useState(() => loadState('nova_theme', 'dark'));
   const [view, setView] = useState('workspace');
-  const [chats, setChats] = useState([{ id: uid(), title: 'New chat', messages: [], sources: [], createdAt: Date.now() }]);
-  const [activeId, setActiveId] = useState(() => null);
+  const [chats, setChats] = useState(() => loadState('nova_chats', [{ id: uid(), title: 'New chat', messages: [], sources: [], createdAt: Date.now() }]));
+  const [activeId, setActiveId] = useState(() => loadState('nova_activeId', null));
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -655,7 +663,7 @@ export default function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState(null);
-  const [profile, setProfile] = useState({ name: '', email: '', org: '' });
+  const [profile, setProfile] = useState(() => loadState('nova_profile', { name: '', email: '', org: '' }));
   const [sourceMenu, setSourceMenu] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -664,7 +672,7 @@ export default function App() {
   const [studioSearch, setStudioSearch] = useState('');
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState(() => loadState('nova_accounts', []));
   const [activeTool, setActiveTool] = useState(null);
   const [tool, setTool] = useState({ status: 'idle', progress: 0, data: null, error: null });
 
@@ -703,6 +711,13 @@ export default function App() {
   }, []);
 
   useEffect(() => { if (activeId === null && chats[0]) setActiveId(chats[0].id); }, [activeId, chats]);
+
+  // Persist state to localStorage
+  useEffect(() => { saveState('nova_chats', chats); }, [chats]);
+  useEffect(() => { saveState('nova_activeId', activeId); }, [activeId]);
+  useEffect(() => { saveState('nova_theme', theme); }, [theme]);
+  useEffect(() => { saveState('nova_profile', profile); }, [profile]);
+  useEffect(() => { saveState('nova_accounts', accounts); }, [accounts]);
 
   const activeChat = chats.find(c => c.id === activeId) || chats[0];
 
@@ -896,7 +911,12 @@ export default function App() {
     const c = { id: uid(), title: 'New chat', messages: [], sources: [], createdAt: Date.now() };
     setChats([c]); setActiveId(c.id); setView('home');
     setSidebarOpen(false); setActiveTool(null); setStudioOpen(false); setConfirmLogout(false);
-    setIsAuthed(false);
+    setIsAuthed(false); setProfile({ name: '', email: '', org: '' }); setAccounts([]);
+    localStorage.removeItem('nova_token');
+    localStorage.removeItem('nova_chats');
+    localStorage.removeItem('nova_activeId');
+    localStorage.removeItem('nova_profile');
+    localStorage.removeItem('nova_accounts');
   };
 
   /* ---------- Work Studio ---------- */
