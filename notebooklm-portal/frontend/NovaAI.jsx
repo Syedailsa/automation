@@ -7,7 +7,6 @@ import {
   Wand2, Headphones, Presentation, Clapperboard, Network, Layers,
   ListChecks, PieChart, Table, Pin, ArrowLeft, ChevronRight, ChevronLeft,
   Play, Pause, RotateCw, Loader2, AlertTriangle,
-  Mail, Lock, Eye, EyeOff, User, ArrowRight,
   Download, Printer, FileSpreadsheet, CheckCircle2, Info, Gauge
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -19,35 +18,23 @@ import * as XLSX from 'xlsx';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-/* Password hashing for the offline demo. Uses Web Crypto PBKDF2 when available
-   (secure context); otherwise falls back gracefully so the app never crashes.
-   Note: real, production hashing (bcrypt) lives in the auth backend. */
-const toHex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-const cryptoOK = () => typeof crypto !== 'undefined' && crypto.subtle && crypto.getRandomValues;
-async function pbkdf2(password, saltHex) {
-  const enc = new TextEncoder();
-  const salt = saltHex
-    ? Uint8Array.from(saltHex.match(/.{2}/g).map(b => parseInt(b, 16)))
-    : crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, key, 256);
-  return `p:${toHex(salt)}:${toHex(bits)}`;
-}
-// Tiny non-crypto fallback (demo only) — never throws.
-const weakHash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'w:' + h.toString(16); };
-async function hashPw(pw) {
-  try { if (cryptoOK()) return await pbkdf2(pw); } catch (e) {}
-  return weakHash(pw);
-}
-async function verifyPw(pw, stored) {
-  if (!stored) return false;
+async function extractPdfText(file) {
   try {
-    if (stored.startsWith('w:')) return stored === weakHash(pw);
-    if (stored.startsWith('p:')) { const [, saltHex] = stored.split(':'); return (await pbkdf2(pw, saltHex)) === stored; }
-    // legacy "saltHex:hashHex" (no prefix) from an earlier version
-    if (stored.includes(':')) { const [saltHex] = stored.split(':'); return (await pbkdf2(pw, saltHex)) === ('p:' + stored); }
-  } catch (e) {}
-  return stored === weakHash(pw);
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const raw = new TextDecoder('latin1').decode(bytes);
+    // Extract text between BT/ET text blocks
+    const texts = [];
+    const re = /\(([^)]+)\)/g;
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      const t = m[1].replace(/\\[()\\]/g, '').replace(/\\n/g, '\n').trim();
+      if (t.length > 1 && !/^[{}\[\]<>]+$/.test(t)) texts.push(t);
+    }
+    return texts.join(' ').slice(0, 30000) || `[PDF: ${file.name} — ${Math.round(file.size / 1024)}KB, text extraction limited]`;
+  } catch {
+    return `[PDF: ${file.name} — text could not be extracted]`;
+  }
 }
 
 const SYSTEM = `You are NovaAI, an intelligent enterprise AI workspace assistant.
@@ -581,57 +568,30 @@ const BrandMicrosoft = () => (
 );
 
 /* ---------- Login / Signup / Forgot ---------- */
-function AuthScreen({ theme, onToggleTheme, onAuthenticated, accounts = [], registerAccount }) {
-  const [mode, setMode] = useState('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(true);
-  const [agree, setAgree] = useState(false);
+function AuthScreen({ theme, onToggleTheme }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const PROVIDER_LABEL = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft' };
 
-  const finish = (user) => { setLoading(true); setTimeout(() => { setLoading(false); onAuthenticated(user); }, 650); };
-  const submitLogin = async () => {
-    setError('');
-    const em = email.trim().toLowerCase();
-    if (!validEmail) return setError('Please enter a valid email address.');
-    if (!password) return setError('Please enter your password.');
-    setLoading(true);
-    const acct = accounts.find(a => a.email.toLowerCase() === em);
-    const ok = acct && await verifyPw(password, acct.passwordHash);
-    setLoading(false);
-    if (!ok) return setError('Invalid email or password.');
-    finish({ name: acct.name, email: acct.email });
+  // OAuth: redirect to backend Google OAuth
+  const social = async (provider) => {
+    if (provider === 'google') {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/auth/google/redirect');
+        const data = await res.json();
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url;
+        } else {
+          setError('Failed to get Google OAuth URL');
+          setLoading(false);
+        }
+      } catch (e) {
+        setError('Failed to connect to auth server');
+        setLoading(false);
+      }
+    }
   };
-  const submitSignup = async () => {
-    setError('');
-    const em = email.trim().toLowerCase();
-    if (!name.trim()) return setError('Please enter your name.');
-    if (!validEmail) return setError('Please enter a valid email address.');
-    if (password.length < 6) return setError('Password must be at least 6 characters.');
-    if (password !== confirm) return setError('Passwords do not match.');
-    if (!agree) return setError('Please accept the Terms to continue.');
-    if (accounts.some(a => a.email.toLowerCase() === em)) return setError('An account with this email already exists. Please log in.');
-    setLoading(true);
-    const passwordHash = await hashPw(password);
-    registerAccount({ name: name.trim(), email: email.trim(), passwordHash });
-    setLoading(false);
-    finish({ name: name.trim(), email: email.trim() });
-  };
-  // OAuth is NOT faked: real Google/GitHub/Microsoft sign-in needs the auth backend.
-  const social = (provider) => {
-    setError(`${PROVIDER_LABEL[provider]} sign-in uses real OAuth 2.0, which requires the NovaAI auth backend (see server/README). It can't run in this frontend-only preview — so it won't sign you in here.`);
-  };
-  const sendReset = () => { setError(''); if (!validEmail) return setError('Please enter a valid email address.'); setResetSent(true); };
-  const fillDemo = () => { setEmail('demo@novaai.app'); setPassword('nova1234'); setError(''); };
-  const onEnter = (e) => { if (e.key === 'Enter') { e.preventDefault(); mode === 'login' ? submitLogin() : mode === 'signup' ? submitSignup() : sendReset(); } };
-  const switchMode = (m) => { setMode(m); setError(''); setResetSent(false); };
 
   return (
     <div className="auth">
@@ -656,69 +616,17 @@ function AuthScreen({ theme, onToggleTheme, onAuthenticated, accounts = [], regi
         <div className="auth-card">
           <div className="auth-logo-sm"><NovaMark size={26} /> Nova<span className="brand-ai">AI</span></div>
 
-          <div className="auth-form" key={mode}>
-          {mode === 'forgot' ? (
-            <>
-              <h2>Reset password</h2>
-              <p className="auth-sub">Enter your email and we'll send a reset link.</p>
-              {resetSent ? (
-                <div className="auth-success"><Check size={16} /> If an account exists for {email}, a reset link is on its way.</div>
-              ) : (
-                <>
-                  {error && <div className="auth-error">{error}</div>}
-                  <label className="auth-field"><Mail size={16} className="af-ic" /><input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter} /></label>
-                  <button className="auth-submit" onClick={sendReset}>Send reset link <ArrowRight size={16} /></button>
-                </>
-              )}
-              <p className="auth-switch"><button className="link-btn" onClick={() => switchMode('login')}>← Back to log in</button></p>
-            </>
-          ) : (
-            <>
-              <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
-              <p className="auth-sub">{mode === 'login' ? 'Log in to your NovaAI workspace.' : 'Start your NovaAI workspace in seconds.'}</p>
-
-              <div className="social-row">
-                <button className="social-btn" onClick={() => social('google')}><BrandGoogle /><span className="lbl">Google</span></button>
-                <button className="social-btn" onClick={() => social('github')}><BrandGithub /><span className="lbl">GitHub</span></button>
-                <button className="social-btn" onClick={() => social('microsoft')}><BrandMicrosoft /><span className="lbl">Microsoft</span></button>
-              </div>
-              <div className="divider"><span>or continue with email</span></div>
+          <div className="auth-form">
+              <h2>Welcome to NovaAI</h2>
+              <p className="auth-sub">Sign in to access your workspace.</p>
 
               {error && <div className="auth-error">{error}</div>}
 
-              {mode === 'signup' && (
-                <label className="auth-field"><User size={16} className="af-ic" /><input type="text" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} onKeyDown={onEnter} /></label>
-              )}
-              <label className="auth-field"><Mail size={16} className="af-ic" /><input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter} /></label>
-              <label className="auth-field">
-                <Lock size={16} className="af-ic" />
-                <input type={showPw ? 'text' : 'password'} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={onEnter} />
-                <button className="af-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1}>{showPw ? <EyeOff size={16} /> : <Eye size={16} />}</button>
-              </label>
-              {mode === 'signup' && (
-                <label className="auth-field"><Lock size={16} className="af-ic" /><input type={showPw ? 'text' : 'password'} placeholder="Confirm password" value={confirm} onChange={e => setConfirm(e.target.value)} onKeyDown={onEnter} /></label>
-              )}
-
-              {mode === 'login' ? (
-                <div className="auth-row">
-                  <label className="auth-check"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label>
-                  <button className="link-btn" onClick={() => switchMode('forgot')}>Forgot password?</button>
-                </div>
-              ) : (
-                <label className="auth-check terms"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /> I agree to the Terms & Privacy Policy</label>
-              )}
-
-              <button className="auth-submit" onClick={mode === 'login' ? submitLogin : submitSignup} disabled={loading}>
-                {loading ? <Loader2 size={17} className="spin" /> : <>{mode === 'login' ? 'Log in' : 'Create account'} <ArrowRight size={16} /></>}
-              </button>
-
-              <p className="auth-switch">
-                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-                <button className="link-btn" onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}>{mode === 'login' ? 'Sign up' : 'Log in'}</button>
-              </p>
-              {mode === 'login' && <button className="demo-hint" onClick={fillDemo}>Use demo account (demo@novaai.app)</button>}
-            </>
-          )}
+              <div className="social-row">
+                <button className="social-btn" onClick={() => social('google')} disabled={loading}>
+                  {loading ? <Loader2 size={17} className="spin" /> : <><BrandGoogle /><span className="lbl">Continue with Google</span></>}
+                </button>
+              </div>
           </div>
         </div>
       </div>
@@ -747,7 +655,7 @@ export default function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState(null);
-  const [profile, setProfile] = useState({ name: 'Alex Rahman', email: 'alex@novaai.app', org: 'NovaAI Workspace' });
+  const [profile, setProfile] = useState({ name: '', email: '', org: '' });
   const [sourceMenu, setSourceMenu] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -767,32 +675,32 @@ export default function App() {
   const progTimer = useRef(null);
   useEffect(() => () => clearInterval(progTimer.current), []);
 
-  // Load saved accounts (persist across reloads); seed a demo account if none exist.
+  // Restore session from OAuth token
   useEffect(() => {
     let alive = true;
     (async () => {
+      const token = localStorage.getItem('nova_token');
+      if (!token) return;
       try {
-        try {
-          const r = await window.storage.get('nova_accounts_v3');
-          if (alive && r && r.value) { setAccounts(JSON.parse(r.value)); return; }
-        } catch (e) { /* no storage or first run */ }
-        const seed = [{ name: 'Alex Rahman', email: 'demo@novaai.app', passwordHash: await hashPw('nova1234') }];
-        if (alive) setAccounts(seed);
-        try { await window.storage.set('nova_accounts_v3', JSON.stringify(seed)); } catch (e) {}
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const me = await res.json();
+          if (alive) {
+            setIsAuthed(true);
+            setAccounts([{ name: me.name, email: me.email, avatar_url: me.avatar_url }]);
+            setProfile({ name: me.name || '', email: me.email || '', org: '' });
+          }
+        } else {
+          localStorage.removeItem('nova_token');
+        }
       } catch (e) {
-        if (alive) setAccounts([{ name: 'Alex Rahman', email: 'demo@novaai.app', passwordHash: weakHash('nova1234') }]);
+        localStorage.removeItem('nova_token');
       }
     })();
     return () => { alive = false; };
   }, []);
-
-  const registerAccount = (acct) => {
-    setAccounts(prev => {
-      const next = [...prev, acct];
-      try { window.storage && window.storage.set('nova_accounts_v3', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
-  };
 
   useEffect(() => { if (activeId === null && chats[0]) setActiveId(chats[0].id); }, [activeId, chats]);
 
@@ -803,15 +711,20 @@ export default function App() {
   }, [activeChat?.messages?.length, loading, view]);
 
   /* ---------- API ---------- */
+  const API_BASE = window.location.origin;
   async function callNova(messages) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const token = localStorage.getItem('nova_token') || '';
+    const res = await fetch(`${API_BASE}/api/agent/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: SYSTEM, messages }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ messages, system: SYSTEM }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    return { content: data.content || data.message || '', provider: data.provider || 'llm' };
   }
 
   function buildApiMessages(msgs, sources = []) {
@@ -821,9 +734,12 @@ export default function App() {
       let text = m.text || '';
       (m.attachments || []).forEach(a => {
         if (a.kind === 'image') blocks.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType, data: a.data } });
-        else if (a.kind === 'pdf') blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } });
+        else if (a.kind === 'pdf') {
+          if (a.textContent) text += `\n\n[Attached PDF: ${a.name}]\n${a.textContent}`;
+          else if (a.data) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } });
+        }
         else if (a.kind === 'text') text += `\n\n[Attached file: ${a.name}]\n${a.textContent}`;
-        else text += `\n\n[Attached file: ${a.name} — content not readable in this prototype]`;
+        else text += `\n\n[Attached file: ${a.name} — content not readable]`;
       });
       if (blocks.length) {
         blocks.push({ type: 'text', text: text || 'Please analyze the attached file(s).' });
@@ -839,7 +755,10 @@ export default function App() {
       let srcNote = 'RESEARCH SOURCES — base your answers on these and cite the source name when you use it:\n';
       sources.forEach(s => {
         if (s.kind === 'image') srcBlocks.push({ type: 'image', source: { type: 'base64', media_type: s.mediaType, data: s.data } });
-        else if (s.kind === 'pdf') srcBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: s.data } });
+        else if (s.kind === 'pdf') {
+          if (s.textContent) srcNote += `\n--- Source: ${s.name} ---\n${s.textContent}\n`;
+          else if (s.data) srcBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: s.data } });
+        }
         else if (s.kind === 'text') srcNote += `\n--- Source: ${s.name} ---\n${s.textContent}\n`;
         else srcNote += `\n--- Source: ${s.name} (content not readable) ---\n`;
       });
@@ -880,7 +799,8 @@ export default function App() {
           setAttachments(a => a.map(x => x._p && x.name === f.name ? { ...x, data, _p: false } : x));
         } else if (isPdf) {
           const data = await toBase64(f);
-          setAttachments(a => [...a, { id: uid(), name: f.name, kind: 'pdf', mediaType: 'application/pdf', data }]);
+          const textContent = await extractPdfText(f);
+          setAttachments(a => [...a, { id: uid(), name: f.name, kind: 'pdf', mediaType: 'application/pdf', data, textContent }]);
         } else {
           setAttachments(a => [...a, { id: uid(), name: f.name, kind: 'other' }]);
         }
@@ -903,8 +823,9 @@ export default function App() {
     setInput(''); setAttachments([]); setLoading(true);
     if (taRef.current) taRef.current.style.height = 'auto';
     try {
-      const reply = await callNova(buildApiMessages(updatedMsgs, activeChat?.sources || []));
-      const aMsg = { id: uid(), role: 'assistant', text: reply || 'No response was returned.' };
+      const { content, provider } = await callNova(buildApiMessages(updatedMsgs, activeChat?.sources || []));
+      const providerTag = provider === 'notebooklm' ? ' [NotebookLM]' : '';
+      const aMsg = { id: uid(), role: 'assistant', text: (content || 'No response was returned.') + providerTag };
       setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: [...c.messages, aMsg] } : c));
     } catch {
       const aMsg = { id: uid(), role: 'assistant', isError: true, text: 'Something went wrong while processing this task. Check your connection and try again.' };
@@ -946,7 +867,11 @@ export default function App() {
       try {
         if (isTxt) addSourceToChat({ id: uid(), name: f.name, kind: 'text', textContent: (await f.text()).slice(0, 30000) });
         else if (isImg) addSourceToChat({ id: uid(), name: f.name, kind: 'image', mediaType: f.type, data: await toBase64(f) });
-        else if (isPdf) addSourceToChat({ id: uid(), name: f.name, kind: 'pdf', mediaType: 'application/pdf', data: await toBase64(f) });
+        else if (isPdf) {
+          const data = await toBase64(f);
+          const textContent = await extractPdfText(f);
+          addSourceToChat({ id: uid(), name: f.name, kind: 'pdf', mediaType: 'application/pdf', data, textContent });
+        }
         else addSourceToChat({ id: uid(), name: f.name, kind: 'other' });
         notify(`Added source: ${f.name}`, 'success');
       } catch { notify(`Couldn't add ${f.name}`, 'error'); }
@@ -982,12 +907,19 @@ export default function App() {
     const blocks = []; let ctx = '';
     sources.forEach(s => {
       if (s.kind === 'image' && s.data) blocks.push({ type: 'image', source: { type: 'base64', media_type: s.mediaType, data: s.data } });
-      else if (s.kind === 'pdf' && s.data) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: s.data } });
+      else if (s.kind === 'pdf') {
+        // Use extracted text if available, otherwise include as document block
+        if (s.textContent) {
+          ctx += `\n--- Source: ${s.name} ---\n${s.textContent}\n`;
+        } else if (s.data) {
+          blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: s.data } });
+        }
+      }
       else if (s.kind === 'text') ctx += `\n--- Source: ${s.name} ---\n${s.textContent}\n`;
     });
     const convo = (activeChat?.messages || []).filter(m => !m.isError).map(m => `${m.role === 'user' ? 'User' : 'NovaAI'}: ${m.text}`).join('\n');
     if (convo) ctx += `\n--- Conversation ---\n${convo}\n`;
-    return { blocks, ctx: ctx.slice(0, 8000) };
+    return { blocks, ctx: ctx.slice(0, 30000) };
   };
 
   const generateTool = async (kind) => {
@@ -999,13 +931,18 @@ export default function App() {
     try {
       const { blocks, ctx } = buildToolMaterial();
       const content = [...blocks, { type: 'text', text: `${ctx}\n\n${TOOL_PROMPTS[kind]}` }];
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: STUDIO_SYSTEM, messages: [{ role: 'user', content }] }),
+      const token = localStorage.getItem('nova_token') || '';
+      const res = await fetch(`${API_BASE}/api/agent/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ messages: [{ role: 'user', content: content.map(b => b.text || '').join('\n') }], system: STUDIO_SYSTEM, provider: 'llm' }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const j = await res.json();
-      const raw = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+      const raw = typeof j.content === 'string' ? j.content : (Array.isArray(j.content) ? j.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim() : '');
       const data = kind === 'report' ? { markdown: raw } : cleanJSON(raw);
       clearInterval(progTimer.current);
       setTool({ status: 'done', progress: 100, data, error: null });
@@ -1158,7 +1095,7 @@ export default function App() {
                 onChange={grow}
                 onKeyDown={onKeyDown}
               />
-              <button className="icon-btn" title="Voice input (demo)"><Mic size={19} /></button>
+              <button className="icon-btn" title="Voice input"><Mic size={19} /></button>
               <button className="send" disabled={loading || (!input.trim() && attachments.length === 0)} onClick={() => send()}>
                 <Send size={17} />
               </button>
@@ -1269,6 +1206,26 @@ export default function App() {
         </div>
       </div>
       <div className="card">
+        <h4>NotebookLM Connection</h4>
+        <p className="muted-p" style={{margin:'0 0 12px'}}>Connect your Google account to use NotebookLM for AI-powered research grounded in your notebooks.</p>
+        <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          <button className="auth-submit" style={{width:'auto',padding:'10px 20px'}} onClick={async () => {
+            const token = localStorage.getItem('nova_token');
+            if (!token) { alert('Please log in first.'); return; }
+            try {
+              const res = await fetch('/api/auth/google/redirect');
+              const data = await res.json();
+              if (data.authorization_url) {
+                window.location.href = data.authorization_url;
+              }
+            } catch(e) { alert('Failed to get OAuth URL'); }
+          }}>
+            Connect NotebookLM
+          </button>
+          {accounts[0]?.email && <span style={{color:'var(--muted)',fontSize:'13px'}}>Logged in as {accounts[0].email}</span>}
+        </div>
+      </div>
+      <div className="card">
         <h4>Profile</h4>
         <label className="fld">Name<input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} /></label>
         <label className="fld">Email<input value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} /></label>
@@ -1276,7 +1233,7 @@ export default function App() {
       </div>
       <div className="card">
         <h4>About</h4>
-        <p className="muted-p">NovaAI Workspace — prototype. Connected to a live AI model for real document analysis, writing, research, and code generation.</p>
+        <p className="muted-p">NovaAI Workspace — Connected to a live AI model for real document analysis, writing, research, and code generation.</p>
       </div>
     </div>
   );
@@ -1294,7 +1251,7 @@ export default function App() {
       <ToastHost />
 
       {!isAuthed ? (
-        <AuthScreen theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))} onAuthenticated={handleAuth} accounts={accounts} registerAccount={registerAccount} />
+        <AuthScreen theme={theme} onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))} />
       ) : (
       <>
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
@@ -1461,7 +1418,7 @@ const CSS = `
 }
 *{box-sizing:border-box}
 .app{display:flex;height:100vh;width:100%;background:var(--bg);color:var(--text);
-  font-family:var(--font);font-size:14.5px;line-height:1.5;overflow:hidden;
+  font-family:var(--font);font-size:14.5px;line-height:1.5;overflow:auto;
   -webkit-font-smoothing:antialiased;letter-spacing:.005em;}
 .app button{font-family:inherit;cursor:pointer;color:inherit}
 .app input,.app textarea{font-family:inherit}
@@ -1535,7 +1492,7 @@ const CSS = `
 .ni-ic.ok{background:rgba(34,197,94,.16);color:var(--success)}
 .top-av{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:700;color:#fff;
   background:linear-gradient(135deg,var(--primary),var(--accent));margin-left:4px}
-.content{flex:1;overflow:hidden;display:flex;min-height:0}
+.content{flex:1;overflow:auto;display:flex;min-height:0}
 
 /* ---------- Workspace ---------- */
 .ws{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -1614,7 +1571,7 @@ const CSS = `
 .disclaimer{text-align:center;font-size:11.5px;color:var(--faint);margin:8px 0 0}
 
 /* ---------- Generic pages ---------- */
-.content>.ws{overflow:hidden}
+.content>.ws{overflow:auto}
 .page{flex:1;overflow-y:auto;padding:28px 26px 40px;max-width:900px;margin:0 auto;width:100%}
 .page-h1{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
 .page-p{color:var(--muted);margin:0 0 22px}
@@ -1969,7 +1926,7 @@ button.list-row{cursor:pointer}
 /* ---------- Auth (login / signup) ---------- */
 .auth{position:relative;flex:1;display:flex;min-height:100vh;width:100%;background:var(--bg);overflow-y:auto}
 .auth-theme{position:absolute;top:16px;right:16px;z-index:6;background:var(--surface);border:1px solid var(--border)}
-.auth-brand{flex:1.05;position:relative;display:flex;flex-direction:column;justify-content:center;gap:20px;padding:56px;overflow:hidden;
+.auth-brand{flex:1.05;position:relative;display:flex;flex-direction:column;justify-content:center;gap:20px;padding:56px;overflow:auto;
   background:linear-gradient(160deg,var(--bg2),var(--surface))}
 .ab-glow{position:absolute;top:-8%;left:-6%;width:520px;height:520px;pointer-events:none;
   background:radial-gradient(circle,rgba(59,130,246,.30),rgba(139,92,246,.14) 45%,transparent 70%);filter:blur(10px);animation:pulse 7s ease-in-out infinite}
@@ -2036,8 +1993,6 @@ button.list-row{cursor:pointer}
 .auth-form{display:flex;flex-direction:column;gap:15px;animation:fadeSlide .28s cubic-bezier(.22,1,.36,1)}
 .modal{animation:modalIn .26s cubic-bezier(.22,1,.36,1)}
 .tool-card{animation:cardIn .34s cubic-bezier(.22,1,.36,1) both}
-.demo-hint{align-self:center;border:none;background:transparent;color:var(--faint);font-size:12.5px;padding:2px;transition:color .15s}
-.demo-hint:hover{color:var(--primary);text-decoration:underline}
 
 /* gentle color fade when switching light/dark */
 .app,.main,.topbar,.content,.auth,.auth-brand,.auth-panel,.sources-bar,.tv-head,.tv-body,
@@ -2091,6 +2046,21 @@ button.list-row{cursor:pointer}
   .stat-grid,.stat-grid.big{grid-template-columns:1fr 1fr}
   .suggest-grid{grid-template-columns:1fr}
   .bar-label{width:100px}
+  .thread{max-width:100%;padding:16px 12px 8px}
+  .page{padding:20px 16px 32px}
+}
+@media(max-width:600px){
+  .topbar{height:52px;padding:0 12px}
+  .auth-brand{padding:28px 20px}
+  .auth-panel{padding:16px}
+  .sources-bar{flex-wrap:wrap}
+  .sb-add.studio{min-width:0}
+  .stat-grid{grid-template-columns:1fr}
+  .flashcard{max-width:100%;height:auto;min-height:180px}
+}
+@media(min-width:1400px){
+  .thread{max-width:860px}
+  .page{max-width:960px}
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important;scroll-behavior:auto!important}

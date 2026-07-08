@@ -2,19 +2,53 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
-from app.core.exceptions import BadRequestException
+from app.core.exceptions import BadRequestException, UnauthorizedException
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
     AuthMeResponse,
     GoogleCallbackRequest,
     GoogleRedirectResponse,
+    LoginRequest,
+    RegisterRequest,
     TokenResponse,
 )
 from app.services import auth_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+
+# ---------------------------------------------------------------------------
+# Email / Password auth
+# ---------------------------------------------------------------------------
+
+@router.post("/register", response_model=TokenResponse)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        user = await auth_service.register_user(
+            db, body.email, body.password, body.name
+        )
+    except ValueError as e:
+        raise BadRequestException(str(e))
+
+    token = auth_service.generate_jwt_token(str(user.id))
+    return TokenResponse(access_token=token, user_id=str(user.id))
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        user = await auth_service.login_with_password(db, body.email, body.password)
+    except ValueError as e:
+        raise UnauthorizedException(str(e))
+
+    token = auth_service.generate_jwt_token(str(user.id))
+    return TokenResponse(access_token=token, user_id=str(user.id))
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth (portal-only identity)
+# ---------------------------------------------------------------------------
 
 @router.get("/google/redirect", response_model=GoogleRedirectResponse)
 async def google_redirect():
@@ -34,11 +68,15 @@ async def google_callback(body: GoogleCallbackRequest, db: AsyncSession = Depend
     except Exception:
         raise BadRequestException("Failed to get user info from Google")
 
-    user = await auth_service.get_or_create_user(db, user_info, tokens)
+    user = await auth_service.get_or_create_google_user(db, user_info)
     token = auth_service.generate_jwt_token(str(user.id))
 
     return TokenResponse(access_token=token, user_id=str(user.id))
 
+
+# ---------------------------------------------------------------------------
+# Profile
+# ---------------------------------------------------------------------------
 
 @router.get("/me", response_model=AuthMeResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
@@ -47,17 +85,10 @@ async def get_me(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         name=current_user.name,
         avatar_url=current_user.avatar_url,
-        notebooklm_connected=current_user.notebooklm_connected,
         preferred_llm=current_user.preferred_llm,
     )
 
 
 @router.post("/logout")
-async def logout(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    current_user.access_token = None
-    current_user.refresh_token = None
-    await db.commit()
+async def logout(current_user: User = Depends(get_current_user)):
     return {"message": "Logged out successfully"}

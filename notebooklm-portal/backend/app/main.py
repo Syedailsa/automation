@@ -1,7 +1,7 @@
+import time
+import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
-import logging
-import uuid
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,18 +15,81 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.core.exceptions import AppException
-from app.database import init_db
+from app.database import init_db, engine
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.metrics import MetricsMiddleware, metrics_collector
 from app.api import auth, users, notebooks, sources, outputs, agent, ws, tasks
 from app.api.v1.router import v1_router
 from app.middleware.deprecation import DeprecationHeaderMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
+from app.middleware.body_limit import BodySizeLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.cache_service import cache
+from app.services.task_manager import task_manager
+from app.services.server_session import server_session
+from app.services.task_queue import notebooklm_queue, NotebookLMTask
+
+app_start_time: float = 0.0
+
+
+async def _notebooklm_queue_handler(task: NotebookLMTask) -> str:
+    """Process a queued NotebookLM task via the server session."""
+    from app.services.notebooklm_chat import chat_with_notebooklm
+
+    if task.operation == "chat":
+        return await chat_with_notebooklm(task.user_id, task.params.get("message", ""))
+    else:
+        return f"Unknown operation: {task.operation}"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    global app_start_time
+    app_start_time = time.time()
+
     await init_db()
+    await cache.initialize()
+
+    # Initialize server-side NotebookLM session
+    session_ok = await server_session.initialize()
+    if session_ok:
+        logging.getLogger(__name__).info("Server NotebookLM session ready")
+    else:
+        logging.getLogger(__name__).warning(
+            "Server NotebookLM session NOT available — run: "
+            "python scripts/setup_notebooklm_session.py"
+        )
+
+    # Start the request queue
+    notebooklm_queue.set_handler(_notebooklm_queue_handler)
+    await notebooklm_queue.start()
+
+    logging.getLogger(__name__).info("Application started")
     yield
+
+    # Graceful shutdown
+    logging.getLogger(__name__).info("Shutting down...")
+
+    # Stop queue and server session
+    await notebooklm_queue.stop()
+    await server_session.close()
+
+    # Cancel pending background tasks
+    pending = [t for t in task_manager._asyncio_tasks.values() if not t.done()]
+    if pending:
+        logging.getLogger(__name__).info(f"Cancelling {len(pending)} pending tasks")
+        for task in pending:
+            task.cancel()
+        import asyncio
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    # Close cache (Redis connection)
+    await cache.close()
+
+    # Dispose database engine pool
+    await engine.dispose()
+
+    logging.getLogger(__name__).info("Shutdown complete")
 
 
 app = FastAPI(
@@ -104,8 +167,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-# --- CORS ---
-
+# --- Middleware (order matters: last added = first executed) ---
 
 app.add_middleware(RequestLoggerMiddleware)
 
@@ -117,9 +179,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
-
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(RateLimitMiddleware, window_seconds=3600)
 app.add_middleware(DeprecationHeaderMiddleware)
+
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
 # --- Routers ---
@@ -136,10 +203,83 @@ app.include_router(tasks.router)
 app.include_router(v1_router)
 
 
+# --- Root ---
+
+
+@app.get("/", tags=["root"])
+async def root() -> dict:
+    return {
+        "name": "NovaAI v2 — NotebookLM Portal API",
+        "version": "2.0.0",
+        "docs": "/docs",
+        "health": "/api/health",
+        "endpoints": {
+            "auth": "/api/auth/login | /api/auth/register",
+            "agent": "/api/agent/chat | /api/agent/execute",
+            "queue": "/api/queue/status",
+        },
+    }
+
+
 # --- Health Check ---
 
 
 @app.get("/api/health", tags=["health"])
-async def health_check() -> dict[str, str]:
-    """Health check endpoint for monitoring and load balancers."""
-    return {"status": "ok"}
+async def health_check() -> dict:
+    """Health check endpoint with DB, cache, and NotebookLM session status."""
+    uptime = time.time() - app_start_time if app_start_time else 0
+
+    # Check database
+    db_ok = True
+    try:
+        from sqlalchemy import text
+
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    # Check cache
+    cache_info = await cache.health_check()
+
+    # Check NotebookLM session
+    notebooklm_ok = await server_session.is_session_valid()
+
+    healthy = db_ok and cache_info.get("healthy", False)
+    status_code = 200 if healthy else 503
+
+    result = {
+        "status": "ok" if healthy else "degraded",
+        "uptime_seconds": round(uptime, 1),
+        "database": {"healthy": db_ok},
+        "cache": cache_info,
+        "notebooklm": {
+            "session_valid": notebooklm_ok,
+            "queue_size": notebooklm_queue.get_queue_size(),
+            "processing": notebooklm_queue.is_processing,
+        },
+    }
+
+    if not healthy:
+        return JSONResponse(status_code=status_code, content=result)
+    return result
+
+
+@app.get("/api/queue/status", tags=["queue"])
+async def queue_status() -> dict:
+    """NotebookLM queue status."""
+    return {
+        "queue_size": notebooklm_queue.get_queue_size(),
+        "processing": notebooklm_queue.is_processing,
+        "max_size": notebooklm_queue.max_size,
+    }
+
+
+# --- API Metrics ---
+
+
+@app.get("/api/metrics", tags=["metrics"])
+async def get_metrics() -> dict:
+    """API metrics endpoint for monitoring."""
+    uptime = time.time() - app_start_time if app_start_time else 0
+    return metrics_collector.get_metrics({}, uptime)

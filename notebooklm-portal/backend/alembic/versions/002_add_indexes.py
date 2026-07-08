@@ -16,27 +16,27 @@ depends_on = None
 
 def upgrade() -> None:
     # User indexes
-    op.create_index("ix_users_email", "users", ["email"], unique=True)
-    op.create_index("ix_users_google_id", "users", ["google_id"], unique=True)
+    op.create_index("ix_users_email", "users", ["email"], unique=True, if_not_exists=True)
+    op.create_index("ix_users_google_id", "users", ["google_id"], unique=True, if_not_exists=True)
 
     # Notebook indexes
-    op.create_index("ix_notebooks_user_id_status", "notebooks", ["user_id", "status"])
-    op.create_index("ix_notebooks_created_at", "notebooks", ["created_at"])
+    op.create_index("ix_notebooks_user_id_status", "notebooks", ["user_id", "status"], if_not_exists=True)
+    op.create_index("ix_notebooks_created_at", "notebooks", ["created_at"], if_not_exists=True)
 
     # Source indexes
-    op.create_index("ix_sources_notebook_id_type", "sources", ["notebook_id", "source_type"])
-    op.create_index("ix_sources_status", "sources", ["status"])
-    op.create_index("ix_sources_created_at", "sources", ["created_at"])
+    op.create_index("ix_sources_notebook_id_type", "sources", ["notebook_id", "source_type"], if_not_exists=True)
+    op.create_index("ix_sources_status", "sources", ["status"], if_not_exists=True)
+    op.create_index("ix_sources_created_at", "sources", ["created_at"], if_not_exists=True)
 
     # Output indexes
-    op.create_index("ix_outputs_user_id", "outputs", ["user_id"])
-    op.create_index("ix_outputs_notebook_id_type", "outputs", ["notebook_id", "output_type"])
-    op.create_index("ix_outputs_created_at", "outputs", ["created_at"])
+    op.create_index("ix_outputs_user_id", "outputs", ["user_id"], if_not_exists=True)
+    op.create_index("ix_outputs_notebook_id_type", "outputs", ["notebook_id", "output_type"], if_not_exists=True)
+    op.create_index("ix_outputs_created_at", "outputs", ["created_at"], if_not_exists=True)
 
     # Execution log indexes
-    op.create_index("ix_execution_logs_user_id", "execution_logs", ["user_id"])
-    op.create_index("ix_execution_logs_status", "execution_logs", ["status"])
-    op.create_index("ix_execution_logs_created_at", "execution_logs", ["created_at"])
+    op.create_index("ix_execution_logs_user_id", "execution_logs", ["user_id"], if_not_exists=True)
+    op.create_index("ix_execution_logs_status", "execution_logs", ["status"], if_not_exists=True)
+    op.create_index("ix_execution_logs_created_at", "execution_logs", ["created_at"], if_not_exists=True)
 
 
 def downgrade() -> None:

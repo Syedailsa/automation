@@ -1,10 +1,16 @@
 import uuid
-from typing import List
+import logging
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+logger = logging.getLogger(__name__)
+
 from app.agents import NotebookLMAgent, execution_hub, ExecutionEvent
+from app.agents.llm_provider import LLMProvider
 from app.core.deps import get_current_user
 from app.database import get_db
 from app.models.user import User
@@ -20,6 +26,18 @@ from app.services.ws_manager import ws_manager
 from app.utils.language_detector import detect_language
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
+
+
+class ChatRequest(BaseModel):
+    messages: List[dict]
+    system: Optional[str] = None
+    provider: Optional[str] = None  # "llm" forces raw LLM, "notebooklm" forces NotebookLM
+
+
+class ChatResponse(BaseModel):
+    content: str
+    provider: str = ""
+    model: str = ""
 
 
 @router.post("/refine", response_model=AgentRefineResponse)
@@ -77,10 +95,15 @@ async def execute_workflow(
         await svc.append_event(log.id, event_data)
 
     agent = NotebookLMAgent()
+
+    # Get conversation context from recent executions
+    context = await svc.get_conversation_context(current_user.id, limit=5)
+
     result = await agent.execute_workflow(
         user_input=body.input_text,
         notebook_id=body.notebook_id,
         on_event=on_event,
+        conversation_context=context if context else None,
     )
 
     await svc.update_execution_log(
@@ -164,3 +187,65 @@ async def get_history(
         )
         for log in logs
     ]
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(
+    body: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Chat endpoint — routes through NotebookLM pipeline if provider is 'notebooklm'."""
+    user_message = ""
+    for msg in body.messages:
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                user_message = " ".join(
+                    b.get("text", "") for b in content if isinstance(b, dict)
+                )
+            else:
+                user_message = str(content)
+
+    # If provider is "notebooklm", enqueue through the request queue
+    if body.provider == "notebooklm":
+        from app.services.task_queue import notebooklm_queue
+        try:
+            task = await notebooklm_queue.enqueue(
+                user_id=str(current_user.id),
+                operation="chat",
+                params={"message": user_message},
+            )
+            # Wait for the task to complete (with timeout)
+            import asyncio
+            for _ in range(300):  # 5 minutes max
+                await asyncio.sleep(1)
+                task = notebooklm_queue.get_task(task.task_id)
+                if task and task.status.value in ("completed", "failed", "timeout"):
+                    break
+
+            if task and task.status.value == "completed" and task.result:
+                return ChatResponse(
+                    content=task.result,
+                    provider="notebooklm",
+                    model="notebooklm",
+                )
+            elif task and task.error:
+                logger.error(f"NotebookLM queue error: {task.error}")
+        except Exception as e:
+            logger.error(f"NotebookLM queue error: {e}")
+
+    # Default: raw LLM response
+    llm = LLMProvider()
+    system_prompt = body.system or "You are a helpful assistant."
+
+    response = await llm.generate(
+        prompt=user_message,
+        system_prompt=system_prompt,
+    )
+
+    return ChatResponse(
+        content=response,
+        provider=llm.default_provider,
+        model=llm.PROVIDER_ENDPOINTS.get(llm.default_provider, {}).get("default_model", ""),
+    )

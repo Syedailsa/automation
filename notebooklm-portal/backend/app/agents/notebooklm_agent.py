@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from .action_planner import ActionPlanner
-from .action_executor import ActionExecutor, NullToolExecutor
+from .action_executor import ActionExecutor
 from .llm_provider import LLMProvider
 from .prompt_templates import PromptTemplates
 
@@ -63,10 +63,10 @@ execution_hub = ExecutionHub()
 
 
 class NotebookLMAgent:
-    def __init__(self, provider: Optional[str] = None, page=None):
+    def __init__(self, provider: Optional[str] = None):
         self.llm = LLMProvider(provider)
         self.planner = ActionPlanner(self.llm)
-        self.executor = ActionExecutor(page) if page else NullToolExecutor()
+        self.executor = ActionExecutor()
         self.templates = PromptTemplates()
         self.execution_id: Optional[str] = None
 
@@ -96,6 +96,7 @@ class NotebookLMAgent:
         user_input: str,
         notebook_id: Optional[str] = None,
         on_event: Optional[Callable] = None,
+        conversation_context: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         self.execution_id = str(uuid.uuid4())
         if on_event:
@@ -106,7 +107,10 @@ class NotebookLMAgent:
 
         try:
             await self._emit("thinking", "Analyzing user request and planning actions")
-            actions = await self.planner.plan_actions(user_input)
+            actions = await self.planner.plan_actions(
+                user_input,
+                conversation_context=conversation_context,
+            )
             events.append({
                 "type": "plan_created",
                 "actions": actions,

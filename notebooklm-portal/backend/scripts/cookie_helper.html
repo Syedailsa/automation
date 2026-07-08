@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><title>Export NotebookLM Cookies</title></head>
+<body>
+<h2>Step 1: Open NotebookLM in another tab and log in</h2>
+<h2>Step 2: Come back here and click the button</h2>
+<button onclick="exportCookies()">Export Cookies</button>
+<pre id="output"></pre>
+<script>
+async function exportCookies() {
+  try {
+    const resp = await fetch('https://notebooklm.google.com', {credentials: 'include'});
+    const cookies = document.cookie;
+    
+    // Get storage state from a running Playwright session isn't possible from browser
+    // Instead, we'll export what we can
+    const data = {
+      note: "Export cookies from browser DevTools instead",
+      instructions: [
+        "1. Open NotebookLM in Chrome",
+        "2. Press F12 → Application tab → Cookies",
+        "3. Copy all cookies from notebooklm.google.com",
+        "4. Or use this JavaScript in Console on notebooklm.google.com:"
+      ],
+      js_code: `
+// Run this in Console on notebooklm.google.com:
+copy(JSON.stringify({
+  storage_state: {
+    cookies: document.cookie.split(';').map(c => {
+      const [name, ...val] = c.trim().split('=');
+      return {name, value: val.join('='), domain: '.google.com', path: '/'};
+    }),
+    origins: []
+  },
+  saved_at: new Date().toISOString(),
+  expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString()
+}, null, 2));
+console.log('Cookies copied to clipboard!');
+      `
+    };
+    
+    document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    document.getElementById('output').textContent = 'Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>

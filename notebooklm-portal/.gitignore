@@ -39,3 +39,10 @@ htmlcov/
 
 # Project Config (contains secrets)
 .project_config.json
+backend/browser-profile/
+backend/browser-pw-profile/
+*.pyc
+__pycache__/
+.env
+node_modules/
+.DS_Store

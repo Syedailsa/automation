@@ -119,6 +119,27 @@ class AgentService:
         await self.db.commit()
         return True
 
+    async def get_conversation_context(
+        self,
+        user_id: uuid.UUID,
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Get recent execution history for conversation memory."""
+        logs = await self.get_execution_logs_by_user(user_id, limit=limit)
+        context = []
+        for log in reversed(logs):
+            context.append({
+                "input": log.original_input,
+                "refined": log.refined_input,
+                "status": log.status,
+                "result_summary": (
+                    log.result.get("message", "")[:200]
+                    if log.result and isinstance(log.result, dict)
+                    else ""
+                ),
+            })
+        return context
+
 
 class _AgentServiceProxy:
     def __init__(self):

@@ -1,6 +1,7 @@
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserProfileResponse(BaseModel):
@@ -8,12 +9,18 @@ class UserProfileResponse(BaseModel):
     email: str
     name: str | None = None
     avatar_url: str | None = None
-    notebooklm_connected: bool = False
     preferred_llm: str = "openai"
     created_at: datetime
     last_login: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def convert_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
 
 
 class UserProfileUpdate(BaseModel):
@@ -23,7 +30,6 @@ class UserProfileUpdate(BaseModel):
 
 class UserSettingsResponse(BaseModel):
     preferred_llm: str = "openai"
-    notebooklm_connected: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,8 +40,3 @@ class UserSettingsUpdate(BaseModel):
 
 class LLMKeyRequest(BaseModel):
     llm_api_key: str
-
-
-class NotebookLMStatusResponse(BaseModel):
-    notebooklm_connected: bool
-    last_login: datetime | None = None
