@@ -17,7 +17,7 @@ class LLMResponse:
 
 
 class LLMProvider:
-    PROVIDER_ORDER = ["openrouter", "openai", "anthropic", "fireworks", "ollama"]
+    PROVIDER_ORDER = ["cerebras", "openrouter", "openai", "anthropic", "fireworks", "ollama"]
 
     # Fallback models for OpenRouter when primary is rate-limited
     OPENROUTER_FALLBACK_MODELS = [
@@ -57,6 +57,12 @@ class LLMProvider:
             "model_env": "OLLAMA_MODEL",
             "default_model": "llama2",
             "api_key_env": None,
+        },
+        "cerebras": {
+            "url": "https://api.cerebras.ai/v1/chat/completions",
+            "model_env": None,
+            "default_model": "zai-glm-4.7",
+            "api_key_env": "CEREBRAS_API_KEY",
         },
     }
 

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     FIREWORKS_API_KEY: str = ""
+    CEREBRAS_API_KEY: str = ""
 
     # LLM Settings
     LLM_DEFAULT_PROVIDER: str = "openrouter"
